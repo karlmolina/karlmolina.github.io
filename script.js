@@ -1,3 +1,5 @@
+const touchDevice = 'ontouchstart' in document.documentElement;
+
 function setup() {
     createCanvas(windowWidth, windowHeight);
     background(0);
@@ -8,6 +10,12 @@ function setup() {
 let c = 0;
 
 function draw() {
+    if (!touchDevice) {
+        background(0);
+        text();
+        return;
+    }
+
     noStroke();
     if (touches.length > 0) {
         fill(0, 0.05);
