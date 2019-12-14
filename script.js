@@ -10,8 +10,8 @@ let c = 0;
 function draw() {
     noStroke();
     if (touches.length > 0) {
-//         fill(0, 0.05);
-//         rect(0, 0, windowWidth, windowHeight);
+        fill(0, 0.05);
+        rect(0, 0, windowWidth, windowHeight);
         c = (c + 5) % 360;
     }
     // fill(c, 255, 255);
