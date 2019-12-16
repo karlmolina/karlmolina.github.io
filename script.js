@@ -34,7 +34,6 @@ function draw() {
 }
 
 function drawNonMobile() {
-    
     noStroke();
     fill(0, 0.05);
     rect(0, 0, windowWidth, windowHeight);
