@@ -1,6 +1,7 @@
 let v;
 let b;
 const touchDevice = 'ontouchstart' in document.documentElement;
+const period = 10;
 
 function setup() {
     if (touchDevice) {
@@ -15,6 +16,7 @@ function setup() {
     }
 
     v = createVector(0, 25);
+    drawSlinky();
 }
 
 function windowResized() {
@@ -22,7 +24,24 @@ function windowResized() {
 }
 
 function draw() {
-    const period = 10;
+    if (touchDevice) {
+        drawMobile();
+    } else {
+        drawNonMobile();
+    }
+}
+
+function drawMobile() {
+    if (mouseIsPressed) {
+        drawSlinky();
+    }
+}
+
+function drawNonMobile() {
+    drawSlinky();
+}
+
+function drawSlinky() {
     v.rotate(1 / period);
     let mouse = createVector(mouseX, mouseY);
     b = p5.Vector.lerp(b, mouse, 0.008);
