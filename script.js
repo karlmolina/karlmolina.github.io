@@ -3,52 +3,70 @@ mySketch = new p5(sketch => {
         constructor(name, linkPath) {
             this.name = name;
             this.linkPath = linkPath;
-            this.p = sketch.createVector(sketch.random(0, sketch.windowWidth), sketch.random(0, sketch.windowHeight));
             this.v = p5.Vector.random2D();
+            this.v.mult(2);
+            this.textWidth = sketch.textWidth(this.name);
+            this.width = this.textWidth / 2;
+            this.height = sketch.textAscent() / 2;
+            this.p = sketch.createVector(
+                sketch.random(this.width, sketch.windowWidth - this.width),
+                sketch.random(this.height, sketch.windowHeight - this.height));
         }
 
         update() {
             this.p.add(this.v);
-            if (this.p.x < 0 || this.p.x > sketch.windowWidth) {
+            if (this.p.x - this.width < 0 || this.p.x + this.width > sketch.windowWidth) {
                 this.v.x = -this.v.x;
             }
-            if (this.p.y < 0 || this.p.y > sketch.windowHeight) {
+            if (this.p.y - this.height < 0 || this.p.y + this.height > sketch.windowHeight) {
                 this.v.y = -this.v.y;
             }
-            if (this.p.dist(sketch.createVector(sketch.mouseX, sketch.mouseY)) < 50) {
+            if (this.pointInside(sketch.mouseX, sketch.mouseY)) {
                 document.body.style.cursor = 'pointer';
                 if (sketch.mouseIsPressed) {
                     window.location.href = '/' + this.linkPath;
                 }
-            } else {
-                document.body.style.cursor = 'default';
             }
         }
 
         show() {
+            sketch.fill(255);
+            sketch.stroke(0);
             sketch.text(this.name, this.p.x, this.p.y);
+            sketch.rectMode(sketch.CENTER);
+            // sketch.rect(this.p.x, this.p.y, this.textWidth, 10);
+        }
+
+        pointInside(x, y) {
+            return this.p.x - this.width < x &&
+                this.p.x + this.width > x &&
+                this.p.y - this.height < y &&
+                this.p.y + this.height > y;
         }
     }
 
-    let minSize, drawingSize, center, links = [];
+    let minSize, drawingSize, center, links;
 
     sketch.setup = () => {
         sketch.createCanvas(sketch.windowWidth, sketch.windowHeight);
         sketch.colorMode(sketch.HSB);
-        updateSketch();
         sketch.textAlign(sketch.CENTER, sketch.CENTER);
         sketch.textFont('Neuton');
-        links.push(new Link('Connected', 'connected'));
-        links.push(new Link('Slinky Monster', 'slinky_monster'));
+        updateSketch();
+
+        // sketch.fill(255);
     };
 
     function updateSketch() {
         minSize = sketch.min(sketch.windowHeight, sketch.windowWidth);
         drawingSize = minSize / 2 - minSize / 50;
         center = sketch.createVector(sketch.windowWidth / 2, sketch.windowHeight / 2);
-        sketch.strokeWeight(minSize / 500);
+        sketch.strokeWeight(minSize / 200);
         sketch.textSize(sketch.windowWidth * 0.1);
-        sketch.background(0);
+        links = [];
+        links.push(new Link('Connected', 'connected'));
+        links.push(new Link('Slinky Monster', 'slinky_monster'));
+        // sketch.background(0);
     }
 
     sketch.windowResized = () => {
@@ -57,13 +75,17 @@ mySketch = new p5(sketch => {
     };
 
     sketch.draw = () => {
-        sketch.background(0);
+        // sketch.background(0);
+        sketch.rectMode(sketch.CORNER);
+        sketch.fill(0, 0.05);
+        sketch.rect(0, 0, sketch.windowWidth, sketch.windowHeight);
         const period = 10000;
-        sketch.fill((sketch.frameCount % period) / period * 360, 100, 100);
+        // sketch.fill((sketch.frameCount % period) / period * 360, 100, 100);
 
         sketch.text('karlmolina.com', sketch.windowWidth / 2, .15 * sketch.windowHeight);
         // logMouseRatio();
 
+        document.body.style.cursor = 'default';
         links.forEach(link => {
             link.update();
             link.show();
