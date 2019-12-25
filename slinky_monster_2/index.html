@@ -1,0 +1,46 @@
+<head>
+    <link rel="stylesheet" href="../styles.css"/>
+</head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.10.2/p5.min.js"></script>
+<script>
+    function setup() {
+        colorMode(HSB, 255);
+        createCanvas(windowWidth, windowHeight);
+        const something = 1;
+        hello('philip');
+        strokeWeight(5);
+    }
+
+    function draw() {
+        const previous = createVector(pmouseX, pmouseY);
+        const mouse = createVector(mouseX, mouseY);
+        //ellipse((pmouseX + mouseX)/2,(pmouseY + mouseY)/2, 100, 100);
+        //ellipse(mouseX, mouseY, 100, 100);
+        const vectors = [];
+        const amount = previous.dist(mouse) / 10;
+
+        for (let i = 0; i < amount; i++) {
+            const vector = p5.Vector.lerp(previous, mouse, i / amount);
+            vectors.push(vector);
+
+        }
+
+        // const middle = p5.Vector.lerp(previous, mouse, 0.5);
+
+
+        // vectors.push(middle);
+        // vectors.push(mouse);
+
+
+        vectors.forEach(v => {
+            stroke(random(0, 255,), 255, 255);
+            ellipse(v.x, v.y, 100, 100);
+        });
+    }
+
+    function hello(x) {
+        console.log(x);
+    }
+
+
+</script>
