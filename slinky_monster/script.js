@@ -28,6 +28,9 @@ function draw() {
         drawMobile();
     } else {
         drawNonMobile();
+        if (mouseIsPressed) {
+            background(255);
+        }
     }
 }
 
