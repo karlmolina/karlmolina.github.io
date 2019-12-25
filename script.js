@@ -67,6 +67,7 @@ mySketch = new p5(sketch => {
         links.push(new Link('Connected', 'connected'));
         links.push(new Link('Slinky Monster', 'slinky_monster'));
         links.push(new Link('Slinky Monster 2', 'slinky_monster_2'));
+        links.push(new Link('Tic Tac Toe', 'tictactoe'));
         // sketch.background(0);
     }
 
