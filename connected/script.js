@@ -53,6 +53,10 @@ function drawNonMobile() {
     vectors.push(
         getRotatedVectorAroundCenter(-period / 2, period / 5, drawingSize / 4)
     );
+
+    if (mouseIsPressed) {
+        vectors.push(createVector(mouseX, mouseY));
+    }
     // vectors.push(getRotatedVectorAroundCenter(period, 0, drawingSize / 5));
     // vectors.push(getRotatedVectorAroundCenter(-period, 0, drawingSize / 2));
     // vectors.push({ x: mouseX, y: mouseY });
@@ -123,7 +127,7 @@ function touchStarted() {
  * touch events, like swiping left for "back" or scrolling
  * the page.
  */
-document.ontouchmove = function(event) {
+document.ontouchmove = function (event) {
     event.preventDefault();
 };
 
