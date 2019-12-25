@@ -76,7 +76,11 @@
     function mousePressed() {
         let minDist = 100000;
         let minIndex = 0;
+        let finished = true;
         for (let i = 0; i < pointList.length; i++) {
+            if (!xList.includes(i) && !oList.includes(i)) {
+                finished = false;
+            }
             const point = pointList[i];
             const dist = point.dist(createVector(mouseX, mouseY));
             if (dist < minDist) {
@@ -96,6 +100,10 @@
         }
 
         playerOneTurn = !playerOneTurn;
+
+        if (finished) {
+            resetBoard();
+        }
     }
 
     function resetBoard() {
@@ -104,10 +112,6 @@
     }
 
     function keyPressed() {
-        resetBoard();
-    }
-
-    function doubleClicked() {
         resetBoard();
     }
 
