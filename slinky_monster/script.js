@@ -28,9 +28,6 @@ function draw() {
         drawMobile();
     } else {
         drawNonMobile();
-        if (mouseIsPressed) {
-            background(255);
-        }
     }
 }
 
@@ -50,7 +47,9 @@ function drawSlinky() {
     b = p5.Vector.lerp(b, mouse, 0.008);
     let a = p5.Vector.add(v, b);
 
-    ellipse(a.x, a.y, 50, 50);
+    if (!mouseIsPressed) {
+        ellipse(a.x, a.y, 50, 50);
+    }
 }
 
 function touchMoved() {
@@ -64,3 +63,7 @@ function touchMoved() {
 document.ontouchmove = function (event) {
     event.preventDefault();
 };
+
+function keyPressed() {
+    background(255);
+}
