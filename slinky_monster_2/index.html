@@ -14,8 +14,6 @@
     function draw() {
         const previous = createVector(pmouseX, pmouseY);
         const mouse = createVector(mouseX, mouseY);
-        //ellipse((pmouseX + mouseX)/2,(pmouseY + mouseY)/2, 100, 100);
-        //ellipse(mouseX, mouseY, 100, 100);
         const vectors = [];
         const amount = previous.dist(mouse) / 10;
 
@@ -24,13 +22,6 @@
             vectors.push(vector);
 
         }
-
-        // const middle = p5.Vector.lerp(previous, mouse, 0.5);
-
-
-        // vectors.push(middle);
-        // vectors.push(mouse);
-
 
         vectors.forEach(v => {
             stroke(random(0, 255,), 255, 255);
