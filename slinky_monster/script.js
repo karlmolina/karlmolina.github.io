@@ -16,7 +16,6 @@ function setup() {
     }
 
     v = createVector(0, 25);
-    drawSlinky();
 }
 
 function windowResized() {
@@ -33,23 +32,24 @@ function draw() {
 
 function drawMobile() {
     if (mouseIsPressed) {
-        drawSlinky();
+        const a = getSlinky();
+
+        ellipse(a.x, a.y, 50, 50);
     }
 }
 
 function drawNonMobile() {
-    drawSlinky();
-}
-
-function drawSlinky() {
-    v.rotate(1 / period);
-    let mouse = createVector(mouseX, mouseY);
-    b = p5.Vector.lerp(b, mouse, 0.008);
-    let a = p5.Vector.add(v, b);
-
+    const a = getSlinky();
     if (!mouseIsPressed) {
         ellipse(a.x, a.y, 50, 50);
     }
+}
+
+function getSlinky() {
+    v.rotate(1 / period);
+    let mouse = createVector(mouseX, mouseY);
+    b = p5.Vector.lerp(b, mouse, 0.008);
+    return p5.Vector.add(v, b);
 }
 
 function touchMoved() {
