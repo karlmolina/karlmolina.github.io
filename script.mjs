@@ -1,39 +1,41 @@
-mySketch = new p5(sketch => {
+import sketchUtils from './utils/sketchUtils.mjs';
+
+new p5(sketchUtils.wrapSketch(s => {
     class Link {
         constructor(name, linkPath) {
             this.name = name;
             this.linkPath = linkPath;
             this.v = p5.Vector.random2D();
             this.v.mult(2);
-            this.textWidth = sketch.textWidth(this.name);
+            this.textWidth = s.textWidth(this.name);
             this.width = this.textWidth / 2;
-            this.height = sketch.textAscent() / 2;
-            this.p = sketch.createVector(
-                sketch.random(this.width, sketch.windowWidth - this.width),
-                sketch.random(this.height, sketch.windowHeight - this.height));
+            this.height = s.textAscent() / 2;
+            this.p = s.createVector(
+                s.random(this.width, s.windowWidth - this.width),
+                s.random(this.height, s.windowHeight - this.height));
         }
 
         update() {
             this.p.add(this.v);
-            if (this.p.x - this.width < 0 || this.p.x + this.width > sketch.windowWidth) {
+            if (this.p.x - this.width < 0 || this.p.x + this.width > s.windowWidth) {
                 this.v.x = -this.v.x;
             }
-            if (this.p.y - this.height < 0 || this.p.y + this.height > sketch.windowHeight) {
+            if (this.p.y - this.height < 0 || this.p.y + this.height > s.windowHeight) {
                 this.v.y = -this.v.y;
             }
-            if (this.pointInside(sketch.mouseX, sketch.mouseY)) {
+            if (this.pointInside(s.mouseX, s.mouseY)) {
                 document.body.style.cursor = 'pointer';
-                if (sketch.mouseIsPressed) {
+                if (s.mouseIsPressed) {
                     window.location.href = '/' + this.linkPath;
                 }
             }
         }
 
         show() {
-            sketch.fill(255);
-            sketch.stroke(0);
-            sketch.text(this.name, this.p.x, this.p.y);
-            sketch.rectMode(sketch.CENTER);
+            s.fill(255);
+            s.stroke(0);
+            s.text(this.name, this.p.x, this.p.y);
+            s.rectMode(s.CENTER);
             // sketch.rect(this.p.x, this.p.y, this.textWidth, 10);
         }
 
@@ -47,22 +49,22 @@ mySketch = new p5(sketch => {
 
     let minSize, drawingSize, center, links;
 
-    sketch.setup = () => {
-        sketch.createCanvas(sketch.windowWidth, sketch.windowHeight);
-        sketch.colorMode(sketch.HSB);
-        sketch.textAlign(sketch.CENTER, sketch.CENTER);
-        sketch.textFont('Neuton');
+    s.setup = () => {
+        s.createCanvas(s.windowWidth, s.windowHeight);
+        s.colorMode(s.HSB);
+        s.textAlign(s.CENTER, s.CENTER);
+        s.textFont('Neuton');
         updateSketch();
 
         // sketch.fill(255);
     };
 
     function updateSketch() {
-        minSize = sketch.min(sketch.windowHeight, sketch.windowWidth);
+        minSize = s.min(s.windowHeight, s.windowWidth);
         drawingSize = minSize / 2 - minSize / 50;
-        center = sketch.createVector(sketch.windowWidth / 2, sketch.windowHeight / 2);
-        sketch.strokeWeight(minSize / 200);
-        sketch.textSize(sketch.windowWidth * 0.1);
+        center = s.createVector(s.windowWidth / 2, s.windowHeight / 2);
+        s.strokeWeight(minSize / 200);
+        s.textSize(s.windowWidth * 0.1);
         links = [];
         links.push(new Link('Connected', 'connected'));
         links.push(new Link('Slinky Monster', 'slinky_monster'));
@@ -72,20 +74,20 @@ mySketch = new p5(sketch => {
         // sketch.background(0);
     }
 
-    sketch.windowResized = () => {
-        sketch.resizeCanvas(sketch.windowWidth, sketch.windowHeight);
+    s.windowResized = () => {
+        s.resizeCanvas(s.windowWidth, s.windowHeight);
         updateSketch();
     };
 
-    sketch.draw = () => {
+    s.draw = () => {
         // sketch.background(0);
-        sketch.rectMode(sketch.CORNER);
-        sketch.fill(0, 0.05);
-        sketch.rect(0, 0, sketch.windowWidth, sketch.windowHeight);
+        s.rectMode(s.CORNER);
+        s.fill(0, 0.05);
+        s.rect(0, 0, s.windowWidth, s.windowHeight);
         const period = 10000;
         // sketch.fill((sketch.frameCount % period) / period * 360, 100, 100);
 
-        sketch.text('karlmolina.com', sketch.windowWidth / 2, .15 * sketch.windowHeight);
+        s.text('karlmolina.com', s.windowWidth / 2, .15 * s.windowHeight);
         // logMouseRatio();
 
         document.body.style.cursor = 'default';
@@ -96,8 +98,8 @@ mySketch = new p5(sketch => {
     };
 
     function logMouseRatio() {
-        console.log('x: ', sketch.mouseX / sketch.windowWidth);
-        console.log('y: ', sketch.mouseY / sketch.windowHeight);
+        console.log('x: ', s.mouseX / s.windowWidth);
+        console.log('y: ', s.mouseY / s.windowHeight);
     }
-});
+}));
 
