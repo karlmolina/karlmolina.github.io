@@ -5,99 +5,118 @@
     }
 
 </style>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.10.2/p5.min.js"></script>
-<script>
+<script type="module">
+    import sketchUtils from '../utils/sketchUtils.mjs';
 
-    class TreeItem {
-        constructor(p, v, a) {
-            this.p = p;
-            this.prevP = p;
-            this.v = v;
-            this.a = a;
-            this.a.limit(0.05);
-        }
+    new p5(sketchUtils.wrapSketch(s => {
+        class TreeItem {
+            constructor(p, v, a) {
+                this.p = p;
+                this.prevP = p;
+                this.v = v;
+                this.a = a;
+                this.a.limit(0.05);
+            }
 
-        update() {
-            // You could make a decrease constantly
-            this.prevP = this.p.copy();
-            this.v.add(this.a);
-            this.v.limit(1);
-            this.p.add(this.v);
-        }
+            update() {
+                // You could make a decrease constantly
+                this.prevP = this.p.copy();
+                this.v.add(this.a);
+                this.v.limit(1);
+                this.p.add(this.v);
+            }
 
-        show(size) {
-            // ellipse(this.p.x, this.p.y, size, size);
-            // strokeWeight(size);
-            stroke(0, 0, 0, size);
-            line(this.prevP.x, this.prevP.y, this.p.x, this.p.y);
-        }
-    }
-
-    let minSize, treeItems;
-    let reset = false;
-
-    function setup() {
-        createCanvas(windowWidth, windowHeight);
-        frameRate(60);
-        colorMode(HSB);
-        updateSketch();
-    }
-
-    function updateSketch() {
-        background(255);
-        minSize = min(windowWidth, windowHeight);
-        // strokeWeight(minSize / 400);
-        treeItems = [];
-        treeItems.push(new TreeItem(createVector(windowWidth / 2, windowHeight), createVector(0, -1), createVector(0, 0)));
-    }
-
-    function windowResized() {
-        resizeCanvas(windowWidth, windowHeight);
-        updateSketch();
-    }
-
-    function draw() {
-        for (let i = treeItems.length - 1; i >= 0; i--) {
-            const item = treeItems[i];
-            item.update();
-            // item.show(10 / treeItems.length + 0.1);
-            // item.show(1 - frameCount * 0.01);
-            item.show(i / treeItems.length);
-            // item.show(4 / frameCount + 0.3);
-            const splitRate = 0.03;
-            const killRate = i / (treeItems.length * 10);
-            if (random() < splitRate) {
-                // treeItems.splice(i, 1);
-                const maxRotation = 1;
-                const v1 = item.v.copy();
-                // const rotateAngle = random(0, maxRotation);
-                const rotateAngle = 0.5;
-                v1.rotate(-rotateAngle);
-                treeItems.push(new TreeItem(item.p.copy(), item.v.copy(), v1));
-                const v2 = item.v.copy();
-                v2.rotate(rotateAngle);
-                treeItems.push(new TreeItem(item.p.copy(), item.v.copy(), v2));
-            } else if (random() < killRate && treeItems.length > 2) {
-                treeItems.splice(i, 1);
+            show(size) {
+                // ellipse(this.p.x, this.p.y, size, size);
+                // strokeWeight(size);
+                s.stroke(0, 0, 0, size);
+                s.line(this.prevP.x, this.prevP.y, this.p.x, this.p.y);
             }
         }
-        treeItems.forEach(t => {
-            t.update();
-            t.show();
-        });
-    }
 
+        let minSize, treeItems;
+        let reset = false;
 
-    function keyPressed() {
-        if (reset) {
+        s.setup = () => {
+            s.createCanvas(s.windowWidth, s.windowHeight);
+            s.frameRate(60);
+            s.colorMode(s.HSB);
             updateSketch();
-            reset = false;
-        } else {
+        };
+
+        function updateSketch() {
+            s.background(255);
+            minSize = Math.min(s.windowWidth, s.windowHeight);
+            // strokeWeight(minSize / 400);
             treeItems = [];
-            reset = true;
+            treeItems.push(new TreeItem(s.createVector(s.windowWidth / 2, s.windowHeight), s.createVector(0, -1), s.createVector(0, 0)));
         }
-    }
+
+        s.windowResized = () => {
+            s.resizeCanvas(s.windowWidth, s.windowHeight);
+            updateSketch();
+        };
+
+        s.draw = () => {
+            for (let i = treeItems.length - 1; i >= 0; i--) {
+                const item = treeItems[i];
+                item.update();
+                // item.show(10 / treeItems.length + 0.1);
+                // item.show(1 - frameCount * 0.01);
+                item.show(i / treeItems.length);
+                // item.show(4 / frameCount + 0.3);
+                const splitRate = 0.03;
+                const killRate = i / (treeItems.length * 10);
+                if (s.random() < splitRate) {
+                    // treeItems.splice(i, 1);
+                    const maxRotation = 1;
+                    const v1 = item.v.copy();
+                    // const rotateAngle = random(0, maxRotation);
+                    const rotateAngle = 0.5;
+                    v1.rotate(-rotateAngle);
+                    treeItems.push(new TreeItem(item.p.copy(), item.v.copy(), v1));
+                    const v2 = item.v.copy();
+                    v2.rotate(rotateAngle);
+                    treeItems.push(new TreeItem(item.p.copy(), item.v.copy(), v2));
+                } else if (s.random() < killRate && treeItems.length > 2) {
+                    treeItems.splice(i, 1);
+                }
+            }
+            treeItems.forEach(t => {
+                t.update();
+                t.show();
+            });
+        };
 
 
+        s.keyPressed = () => {
+            resetTree();
+        };
+
+        s.mousePressed = () => {
+            if (!sketchUtils.isTouchDevice) {
+                resetTree();
+            }
+        };
+
+        s.touchStarted = () => {
+            resetTree();
+        };
+
+        function resetTree() {
+            if (reset) {
+                updateSketch();
+                reset = false;
+            } else {
+                treeItems = [];
+                reset = true;
+            }
+
+        }
+
+    }));
 </script>
 
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
