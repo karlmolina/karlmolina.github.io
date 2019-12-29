@@ -1,119 +1,128 @@
-<link href="https://fonts.googleapis.com/css?family=Varela+Round&display=swap" rel="stylesheet">
-<style>
-    body {
-        margin: auto;
-    }
-
-</style>
+<link href="https://fonts.googleapis.com/css?family=Varela+Round&display=swap" rel="stylesheet"/>
+<link href="../styles.css" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.10.2/p5.min.js"></script>
-<script>
-    let pointList;
-    let xList = [];
-    let oList = [];
-    let playerOneTurn = true;
+<script type="module">
+    import sketchUtils from '../utils/sketchUtils.mjs';
 
+    new p5(sketchUtils.wrapSketch(s => {
+        let pointList;
+        let xList = [];
+        let oList = [];
+        let playerOneTurn = true;
+        let minSize;
 
-    function setup() {
-        createCanvas(windowWidth, windowHeight);
-        textAlign(CENTER, CENTER);
-        colorMode(HSB, 255);
-        textFont('Varela Round');
+        s.setup = () => {
+            s.createCanvas(s.windowWidth, s.windowHeight);
+            s.textAlign(s.CENTER, s.CENTER);
+            s.colorMode(s.HSB, 255);
+            s.textFont('Varela Round');
 
-        updateSketch();
-    }
+            updateSketch();
+        };
 
-    function updateSketch() {
-        background(255);
-        minSize = min(windowWidth, windowHeight);
-        textSize(minSize / 2.5);
-        strokeWeight(minSize / 40);
-        pointList = [];
-        const amount = 3;
-        for (let i = 0; i < amount; i++) {
-            for (let j = 0; j < amount; j++) {
-                pointList.push(
-                    createVector(i / amount * windowWidth + 1 / 6 * windowWidth, j / amount * windowHeight + .2 * windowHeight)
-                );
-            }
-        }
-    }
-
-    function windowResized() {
-        resizeCanvas(windowWidth, windowHeight);
-        updateSketch();
-    }
-
-    function draw() {
-        background(255);
-        line(1 / 3 * windowWidth, 0, 1 / 3 * windowWidth, windowHeight);
-        line(2 / 3 * windowWidth, 0, 2 / 3 * windowWidth, windowHeight);
-        line(0, 1 / 3 * windowHeight, windowWidth, 1 / 3 * windowHeight);
-        line(0, 2 / 3 * windowHeight, windowWidth, 2 / 3 * windowHeight);
-
-        //line(0, i/3*windowWidth, 0, j/3*windowHeight);
-
-        pointList.forEach(p => {
-            //ellipse(p.x, p.y, 10, 10);
-        });
-
-        if (playerOneTurn) {
-            text('O', mouseX, mouseY);
-        } else {
-            text('X', mouseX, mouseY);
-        }
-
-        oList.forEach(i => {
-            const point = pointList[i];
-            text('O', point.x, point.y);
-        });
-
-        xList.forEach(i => {
-            const point = pointList[i];
-            text('X', point.x, point.y);
-        });
-    }
-
-    function mousePressed() {
-        let minDist = 100000;
-        let minIndex = 0;
-        let finished = true;
-        for (let i = 0; i < pointList.length; i++) {
-            if (!xList.includes(i) && !oList.includes(i)) {
-                finished = false;
-            }
-            const point = pointList[i];
-            const dist = point.dist(createVector(mouseX, mouseY));
-            if (dist < minDist) {
-                minDist = dist;
-                minIndex = i;
+        function updateSketch() {
+            s.background(255);
+            minSize = Math.min(s.windowWidth, s.windowHeight);
+            s.textSize(minSize / 2.5);
+            s.strokeWeight(minSize / 40);
+            pointList = [];
+            const amount = 3;
+            for (let i = 0; i < amount; i++) {
+                for (let j = 0; j < amount; j++) {
+                    pointList.push(
+                        s.createVector(i / amount * s.windowWidth + 1 / 6 * s.windowWidth, j / amount * s.windowHeight + .2 * s.windowHeight)
+                    );
+                }
             }
         }
 
-        if (playerOneTurn) {
-            if (!xList.includes(minIndex)) {
-                oList.push(minIndex);
+        s.windowResized = () => {
+            s.resizeCanvas(s.windowWidth, s.windowHeight);
+            updateSketch();
+        };
+
+        s.draw = () => {
+            s.background(255);
+            s.line(1 / 3 * s.windowWidth, 0, 1 / 3 * s.windowWidth, s.windowHeight);
+            s.line(2 / 3 * s.windowWidth, 0, 2 / 3 * s.windowWidth, s.windowHeight);
+            s.line(0, 1 / 3 * s.windowHeight, s.windowWidth, 1 / 3 * s.windowHeight);
+            s.line(0, 2 / 3 * s.windowHeight, s.windowWidth, 2 / 3 * s.windowHeight);
+
+            //line(0, i/3*windowWidth, 0, j/3*windowHeight);
+
+            pointList.forEach(p => {
+                //ellipse(p.x, p.y, 10, 10);
+            });
+            if (!sketchUtils.isTouchDevice) {
+                if (playerOneTurn) {
+                    s.text('O', s.mouseX, s.mouseY);
+                } else {
+                    s.text('X', s.mouseX, s.mouseY);
+                }
             }
-        } else {
-            if (!oList.includes(minIndex)) {
-                xList.push(minIndex);
+
+            oList.forEach(i => {
+                const point = pointList[i];
+                s.text('O', point.x, point.y);
+            });
+
+            xList.forEach(i => {
+                const point = pointList[i];
+                s.text('X', point.x, point.y);
+            });
+        };
+
+        function makeMove() {
+            let minDist = 100000;
+            let minIndex = 0;
+            let finished = true;
+            for (let i = 0; i < pointList.length; i++) {
+                if (!xList.includes(i) && !oList.includes(i)) {
+                    finished = false;
+                }
+                const point = pointList[i];
+                const dist = point.dist(s.createVector(s.mouseX, s.mouseY));
+                if (dist < minDist) {
+                    minDist = dist;
+                    minIndex = i;
+                }
+            }
+
+            if (playerOneTurn) {
+                if (!xList.includes(minIndex)) {
+                    oList.push(minIndex);
+                }
+            } else {
+                if (!oList.includes(minIndex)) {
+                    xList.push(minIndex);
+                }
+            }
+
+            playerOneTurn = !playerOneTurn;
+
+            if (finished) {
+                resetBoard();
             }
         }
 
-        playerOneTurn = !playerOneTurn;
+        s.mousePressed = () => {
+            if (!sketchUtils.isTouchDevice) {
+                makeMove();
+            }
+        };
 
-        if (finished) {
+        s.touchStarted = () => {
+            makeMove();
+        };
+
+        function resetBoard() {
+            oList = [];
+            xList = [];
+        }
+
+        s.keyPressed = () => {
             resetBoard();
-        }
-    }
-
-    function resetBoard() {
-        oList = [];
-        xList = [];
-    }
-
-    function keyPressed() {
-        resetBoard();
-    }
-
+        };
+    }));
 </script>
 
