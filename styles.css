@@ -5,5 +5,5 @@ body {
 canvas {
     width: 100% !important;
     height: 100% !important;
-    touch-action: none;
+    /*touch-action: none;*/
 }

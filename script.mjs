@@ -11,16 +11,16 @@ new p5(sketchUtils.wrapSketch(s => {
             this.width = this.textWidth / 2;
             this.height = s.textAscent() / 2;
             this.p = s.createVector(
-                s.random(this.width, s.windowWidth - this.width),
-                s.random(this.height, s.windowHeight - this.height));
+                s.random(this.width, s.width - this.width),
+                s.random(this.height, s.height - this.height));
         }
 
         update() {
             this.p.add(this.v);
-            if (this.p.x - this.width < 0 || this.p.x + this.width > s.windowWidth) {
+            if (this.p.x - this.width < 0 || this.p.x + this.width > s.width) {
                 this.v.x = -this.v.x;
             }
-            if (this.p.y - this.height < 0 || this.p.y + this.height > s.windowHeight) {
+            if (this.p.y - this.height < 0 || this.p.y + this.height > s.height) {
                 this.v.y = -this.v.y;
             }
             if (this.pointInside(s.mouseX, s.mouseY)) {
@@ -50,44 +50,35 @@ new p5(sketchUtils.wrapSketch(s => {
     let minSize, drawingSize, center, links;
 
     s.setup = () => {
-        s.createCanvas(s.windowWidth, s.windowHeight);
         s.colorMode(s.HSB);
         s.textAlign(s.CENTER, s.CENTER);
         s.textFont('Neuton');
-        updateSketch();
-
-        // sketch.fill(255);
+        s.updateSketch();
     };
 
-    function updateSketch() {
-        minSize = s.min(s.windowHeight, s.windowWidth);
+    s.updateSketch = () => {
+        minSize = s.min(s.height, s.width);
         drawingSize = minSize / 2 - minSize / 50;
-        center = s.createVector(s.windowWidth / 2, s.windowHeight / 2);
+        center = s.createVector(s.width / 2, s.height / 2);
         s.strokeWeight(minSize / 200);
-        s.textSize(s.windowWidth * 0.1);
+        s.textSize(s.width * 0.1);
         links = [];
         links.push(new Link('Connected', 'connected'));
         links.push(new Link('Slinky Monster', 'slinky_monster'));
         // links.push(new Link('Slinky Monster 2', 'slinky_monster_2'));
         links.push(new Link('Tic Tac Toe', 'tictactoe'));
         links.push(new Link('Tree', 'tree'));
-        // sketch.background(0);
-    }
-
-    s.windowResized = () => {
-        s.resizeCanvas(s.windowWidth, s.windowHeight);
-        updateSketch();
     };
 
     s.draw = () => {
         // sketch.background(0);
         s.rectMode(s.CORNER);
         s.fill(0, 0.05);
-        s.rect(0, 0, s.windowWidth, s.windowHeight);
+        s.rect(0, 0, s.width, s.height);
         const period = 10000;
         // sketch.fill((sketch.frameCount % period) / period * 360, 100, 100);
 
-        s.text('karlmolina.com', s.windowWidth / 2, .15 * s.windowHeight);
+        s.text('karlmolina.com', s.width / 2, .15 * s.height);
         // logMouseRatio();
 
         document.body.style.cursor = 'default';
@@ -96,10 +87,5 @@ new p5(sketchUtils.wrapSketch(s => {
             link.show();
         });
     };
-
-    function logMouseRatio() {
-        console.log('x: ', s.mouseX / s.windowWidth);
-        console.log('y: ', s.mouseY / s.windowHeight);
-    }
 }));
 

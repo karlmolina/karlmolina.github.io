@@ -23,10 +23,10 @@
             }
 
             show(size) {
-                // ellipse(this.p.x, this.p.y, size, size);
+                s.ellipse(this.p.x, this.p.y, size, size);
                 // strokeWeight(size);
                 s.stroke(0, 0, 0, size);
-                s.line(this.prevP.x, this.prevP.y, this.p.x, this.p.y);
+                // s.line(this.prevP.x, this.prevP.y, this.p.x, this.p.y);
             }
         }
 
@@ -34,23 +34,15 @@
         let reset = false;
 
         s.setup = () => {
-            s.createCanvas(s.windowWidth, s.windowHeight);
-            s.frameRate(60);
             s.colorMode(s.HSB);
-            updateSketch();
         };
 
-        function updateSketch() {
+        s.updateSketch = () => {
             s.background(255);
-            minSize = Math.min(s.windowWidth, s.windowHeight);
+            minSize = Math.min(s.width, s.height);
             // strokeWeight(minSize / 400);
             treeItems = [];
-            treeItems.push(new TreeItem(s.createVector(s.windowWidth / 2, s.windowHeight), s.createVector(0, -1), s.createVector(0, 0)));
-        }
-
-        s.windowResized = () => {
-            s.resizeCanvas(s.windowWidth, s.windowHeight);
-            updateSketch();
+            treeItems.push(new TreeItem(s.createVector(s.width / 2, s.height), s.createVector(0, -1), s.createVector(0, 0)));
         };
 
         s.draw = () => {
@@ -101,7 +93,7 @@
 
         function resetTree() {
             if (reset) {
-                updateSketch();
+                s.updateSketch();
                 reset = false;
             } else {
                 treeItems = [];
@@ -113,3 +105,4 @@
     }));
 </script>
 
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">

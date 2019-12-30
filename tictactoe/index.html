@@ -12,17 +12,14 @@
         let minSize;
 
         s.setup = () => {
-            s.createCanvas(s.windowWidth, s.windowHeight);
             s.textAlign(s.CENTER, s.CENTER);
             s.colorMode(s.HSB, 255);
             s.textFont('Varela Round');
-
-            updateSketch();
         };
 
-        function updateSketch() {
+        s.updateSketch = () => {
             s.background(255);
-            minSize = Math.min(s.windowWidth, s.windowHeight);
+            minSize = Math.min(s.width, s.height);
             s.textSize(minSize / 2.5);
             s.strokeWeight(minSize / 40);
             pointList = [];
@@ -30,23 +27,18 @@
             for (let i = 0; i < amount; i++) {
                 for (let j = 0; j < amount; j++) {
                     pointList.push(
-                        s.createVector(i / amount * s.windowWidth + 1 / 6 * s.windowWidth, j / amount * s.windowHeight + .2 * s.windowHeight)
+                        s.createVector(i / amount * s.width + 1 / 6 * s.width, j / amount * s.height + .2 * s.height)
                     );
                 }
             }
-        }
-
-        s.windowResized = () => {
-            s.resizeCanvas(s.windowWidth, s.windowHeight);
-            updateSketch();
         };
 
         s.draw = () => {
             s.background(255);
-            s.line(1 / 3 * s.windowWidth, 0, 1 / 3 * s.windowWidth, s.windowHeight);
-            s.line(2 / 3 * s.windowWidth, 0, 2 / 3 * s.windowWidth, s.windowHeight);
-            s.line(0, 1 / 3 * s.windowHeight, s.windowWidth, 1 / 3 * s.windowHeight);
-            s.line(0, 2 / 3 * s.windowHeight, s.windowWidth, 2 / 3 * s.windowHeight);
+            s.line(1 / 3 * s.width, 0, 1 / 3 * s.width, s.height);
+            s.line(2 / 3 * s.width, 0, 2 / 3 * s.width, s.height);
+            s.line(0, 1 / 3 * s.height, s.width, 1 / 3 * s.height);
+            s.line(0, 2 / 3 * s.height, s.width, 2 / 3 * s.height);
 
             //line(0, i/3*windowWidth, 0, j/3*windowHeight);
 
@@ -126,3 +118,4 @@
     }));
 </script>
 
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
