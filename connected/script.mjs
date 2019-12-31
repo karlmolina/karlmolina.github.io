@@ -12,7 +12,7 @@ new p5(sketchUtils.wrapSketch(s => {
     };
 
     s.updateSketch = () => {
-        minSize = Math.min(s.width, s.width);
+        minSize = Math.min(s.width, s.height);
         drawingSize = minSize / 2 - minSize / 50;
         center = s.createVector(s.width / 2, s.height / 2);
         s.strokeWeight(minSize / 500);
