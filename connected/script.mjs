@@ -32,13 +32,9 @@ new p5(sketchUtils.wrapSketch(s => {
         s.fill(0, 0.05);
         s.rect(0, 0, s.width, s.height);
         c = (c + 2) % 360;
-        // fill(c, 255, 255);
-        // ellipse(mouseX,; mouseY, 50, 50);
         let period = 100;
         const angle = ((s.frameCount % period) / period) * s.TWO_PI;
-        // console.log(angle);
         let vectors = [];
-        // vectors.push(getRotatedVectorAroundCenter(200, drawingSize, center));
         period = 300;
         vectors.push(getRotatedVectorAroundCenter(period, 0, drawingSize));
         vectors.push(
@@ -51,12 +47,7 @@ new p5(sketchUtils.wrapSketch(s => {
         if (s.mouseIsPressed) {
             vectors.push(s.createVector(s.mouseX, s.mouseY));
         }
-        // vectors.push(getRotatedVectorAroundCenter(period, 0, drawingSize / 5));
-        // vectors.push(getRotatedVectorAroundCenter(-period, 0, drawingSize / 2));
-        // vectors.push({ x: mouseX, y: mouseY });
-        // vectors.forEach(v => {
-        //     ellipse(v.x, v.y, 10, 10);
-        // });
+
         s.stroke(c, 255, 255);
         drawLines(vectors);
     }
@@ -87,16 +78,6 @@ new p5(sketchUtils.wrapSketch(s => {
     }
 
     function drawLines(vectors) {
-        // for (let i = 0; i < vectors.length - 1; i++) {
-        //     const t1 = vectors[i];
-        //     const t2 = vectors[i + 1];
-        //     drawLine(t1, t2);
-        // }
-
-        // if (vectors.length > 2) {
-        //     drawLine(vectors[0], vectors[vectors.length - 1]);
-        // }
-
         for (let i = 0; i < vectors.length; i++) {
             const t1 = vectors[i];
             for (let j = i + 1; j < vectors.length; j++) {

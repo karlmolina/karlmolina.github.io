@@ -77,7 +77,7 @@ const sketchUtils = {
 
                 wrappedSetup();
                 s.updateSketch();
-                pg = s.createGraphics(1000, 1000);
+                pg = s.createGraphics(300, 300);
             };
 
             const wrappedWindowResized = s.windowResized;

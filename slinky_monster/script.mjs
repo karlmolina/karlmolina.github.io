@@ -20,7 +20,6 @@ new p5(sketchUtils.wrapSketch(s => {
     const period = 10;
 
     s.setup = () => {
-        // s.strokeWeight(10);
         s.strokeWeight(0.3);
     };
 
@@ -30,9 +29,6 @@ new p5(sketchUtils.wrapSketch(s => {
     };
 
     s.draw = () => {
-        // s.noFill();
-        // s.rect(0, 0, s.width, s.height);
-        // s.line(0, 0, s.width, s.height);
         if (sketchUtils.isTouchDevice) {
             drawMobile();
         } else {
