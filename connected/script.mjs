@@ -3,7 +3,6 @@ import sketchUtils from '../utils/sketchUtils.mjs';
 new p5(sketchUtils.wrapSketch(s => {
     const touchDevice = 'ontouchstart' in document.documentElement;
     let v1;
-    let minSize;
     let drawingSize;
 
     s.setup = () => {
@@ -11,9 +10,8 @@ new p5(sketchUtils.wrapSketch(s => {
     };
 
     s.updateSketch = () => {
-        minSize = Math.min(s.width, s.height);
-        drawingSize = minSize / 2 - minSize / 50;
-        s.strokeWeight(minSize / 500);
+        drawingSize = sketchUtils.minSize / 2 - sketchUtils.minSize / 50;
+        s.strokeWeight(sketchUtils.minSize / 500);
         s.background(0);
     };
 

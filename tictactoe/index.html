@@ -9,7 +9,6 @@
         let xList = [];
         let oList = [];
         let playerOneTurn = true;
-        let minSize;
 
         s.setup = () => {
             s.textAlign(s.CENTER, s.CENTER);
@@ -19,9 +18,8 @@
 
         s.updateSketch = () => {
             s.background(255);
-            minSize = Math.min(s.width, s.height);
-            s.textSize(minSize / 2.5);
-            s.strokeWeight(minSize / 40);
+            s.textSize(sketchUtils.minSize / 2.5);
+            s.strokeWeight(sketchUtils.minSize / 40);
             pointList = [];
             const amount = 3;
             for (let i = 0; i < amount; i++) {

@@ -64,12 +64,13 @@ const sketchUtils = {
             // Allow us to call updateSketch when it doesn't exist.
             const wrappedUpdateSketch = s.updateSketch;
             s.updateSketch = () => {
+                sketchUtils.center = getCenter(s);
+                sketchUtils.minSize = Math.min(s.width, s.height);
+
                 if (wrappedUpdateSketch) {
                     wrappedUpdateSketch();
                 }
 
-                sketchUtils.center = getCenter(s);
-                sketchUtils.minSize = Math.min(s.width, s.height);
             };
 
             const wrappedSetup = s.setup;

@@ -30,7 +30,7 @@
             }
         }
 
-        let minSize, treeItems;
+        let treeItems;
         let reset = false;
 
         s.setup = () => {
@@ -39,8 +39,6 @@
 
         s.updateSketch = () => {
             s.background(255);
-            minSize = Math.min(s.width, s.height);
-            // strokeWeight(minSize / 400);
             treeItems = [];
             treeItems.push(new TreeItem(s.createVector(s.width / 2, s.height), s.createVector(0, -1), s.createVector(0, 0)));
         };
