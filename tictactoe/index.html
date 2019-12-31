@@ -91,17 +91,20 @@
                 }
             }
 
-            if (playerOneTurn) {
-                if (!xList.includes(minIndex)) {
+            let madeMove = false;
+
+            if (!xList.includes(minIndex) && !oList.includes(minIndex)) {
+                madeMove = true;
+                if (playerOneTurn) {
                     oList.push(minIndex);
-                }
-            } else {
-                if (!oList.includes(minIndex)) {
+                } else {
                     xList.push(minIndex);
                 }
             }
 
-            playerOneTurn = !playerOneTurn;
+            if (madeMove) {
+                playerOneTurn = !playerOneTurn;
+            }
 
             if (finished) {
                 resetBoard();
