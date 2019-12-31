@@ -54,6 +54,7 @@ function getCenter(s) {
 const sketchUtils = {
     isTouchDevice: 'ontouchstart' in document.documentElement,
     center: {},
+    minSize: 0,
     wrapSketch: function (wrappedSketchFunction) {
         return s => {
             wrappedSketchFunction(s);
@@ -68,6 +69,7 @@ const sketchUtils = {
                 }
 
                 sketchUtils.center = getCenter(s);
+                sketchUtils.minSize = Math.min(s.width, s.height);
             };
 
             const wrappedSetup = s.setup;
