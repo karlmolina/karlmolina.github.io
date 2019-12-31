@@ -47,8 +47,13 @@ function showDebugInfo(s, pg, maxWidth) {
     s.image(pg, 0, 0);
 }
 
+function getCenter(s) {
+    return s.createVector(s.width / 2, s.height / 2);
+}
+
 const sketchUtils = {
     isTouchDevice: 'ontouchstart' in document.documentElement,
+    center: {},
     wrapSketch: function (wrappedSketchFunction) {
         return s => {
             wrappedSketchFunction(s);
@@ -61,6 +66,8 @@ const sketchUtils = {
                 if (wrappedUpdateSketch) {
                     wrappedUpdateSketch();
                 }
+
+                sketchUtils.center = getCenter(s);
             };
 
             const wrappedSetup = s.setup;
