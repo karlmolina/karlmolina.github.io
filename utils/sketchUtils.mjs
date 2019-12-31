@@ -3,12 +3,13 @@ function getWindowDimensions(s) {
 
     let width = s.windowWidth, height = s.windowHeight;
 
+    const maxDimension = 650;
     if (sketchUtils.isTouchDevice) {
         if (height > width) {
-            height = 650;
+            height = maxDimension;
             width = height * ratio;
         } else {
-            width = 650;
+            width = maxDimension;
             height = width / ratio;
         }
     }
