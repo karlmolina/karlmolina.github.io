@@ -7,10 +7,10 @@ function getWindowDimensions(s) {
     if (sketchUtils.isTouchDevice) {
         if (height > width) {
             height = maxDimension;
-            width = height * ratio;
+            width = Math.round(height * ratio);
         } else {
             width = maxDimension;
-            height = width / ratio;
+            height = Math.round(width / ratio);
         }
     }
 
@@ -100,10 +100,28 @@ const sketchUtils = {
             const wrappedDraw = s.draw;
             s.draw = () => {
                 wrappedDraw();
-                // showDebugInfo(s, pg, maxWidth);
+                showDebugInfo(s, pg, maxWidth);
             };
         };
     }
+};
+
+sketchUtils.addSettingsIcon = function () {
+    const materialIconsLink = `<link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">`;
+
+    const settingsMarkup = `
+    <i id="settings" class="material-icons settings-light">
+        settings
+    </i>`;
+    document.head.insertAdjacentHTML('afterbegin', materialIconsLink);
+    document.body.insertAdjacentHTML('beforeend', settingsMarkup);
+};
+
+sketchUtils.setSettingsIconBrightness = function (brightness) {
+    const settingsIcon = document.getElementById('settings');
+    settingsIcon.classList.remove('settings-light', 'settings-dark');
+    settingsIcon.classList.add(`settings-${brightness}`);
 };
 
 export default sketchUtils;

@@ -1,5 +1,8 @@
 import sketchUtils from '../utils/sketchUtils.mjs';
 
+sketchUtils.addSettingsIcon();
+sketchUtils.setSettingsIconBrightness('dark');
+
 new p5(sketchUtils.wrapSketch(s => {
     const touchDevice = 'ontouchstart' in document.documentElement;
     let v1;

@@ -14,6 +14,8 @@
 
 import sketchUtils from '../utils/sketchUtils.mjs';
 
+sketchUtils.addSettingsIcon();
+
 new p5(sketchUtils.wrapSketch(s => {
     let v;
     let b;
