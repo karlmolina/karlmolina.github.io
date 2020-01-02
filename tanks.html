@@ -1,0 +1,65 @@
+<style>
+  body {   
+   margin: 0 auto; 
+  }
+  
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/p5@0.10.2/lib/p5.js"> </script>
+
+<script>
+  class Tank {
+    constructor(x,y) {
+      this.gunAngle = 180;
+      this.velocity = createVector(0, 0);
+      this.position = createVector(x, y);
+    }
+    
+    show() {
+      noStroke();
+      ellipseMode(CENTER);
+      fill(0);
+      ellipse(this.position.x, this.position.y, 50, 20);
+      stroke(170);
+      strokeWeight(7);
+			const gun = createVector(0,25); 
+      gun.rotate(this.gunAngle);
+      line(this.position.x, this.position.y-7, this.position.x + gun.x, this.position.y + gun.y-7);
+    }
+  }
+  let tanks;
+  function setup() {
+    createCanvas(windowWidth, windowHeight);
+    //background(0);
+    //noStroke();
+    fill(102);
+    angleMode(DEGREES);
+   
+    let arr = ['a', 'b', 'c'];
+    console.log(arr[0]);
+    tanks = [new Tank(500,500), new Tank(200,200)];
+    console.log(tanks[0].gunAngle);
+  }	
+	
+  function draw() {
+     background(255)
+     //tanks.show()
+     for (var i = 0; i < tanks.length; i++) {
+       tanks[i].show();
+     }
+  }
+  
+  function keyPressed() {
+    if (key === 's') {
+      // something happens when you press 's'
+      tanks[0].gunAngle += 1
+      console.log('pressed s')
+    }
+    
+    if (this.gunAngle === 0) {
+      this.gunAngle = 0;
+    } else {
+      value = 0;
+    }
+  }
+</script>
