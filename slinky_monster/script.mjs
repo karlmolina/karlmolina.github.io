@@ -21,6 +21,7 @@ new p5(sketchUtils.wrapSketch(s => {
 
     s.setup = () => {
         s.strokeWeight(0.3);
+        s.noFill();
     };
 
     s.updateSketch = () => {
@@ -29,10 +30,13 @@ new p5(sketchUtils.wrapSketch(s => {
     };
 
     s.draw = () => {
-        if (sketchUtils.isTouchDevice) {
-            drawMobile();
-        } else {
-            drawNonMobile();
+        for (let i = 0; i < 5; i++) {
+
+            if (sketchUtils.isTouchDevice) {
+                drawMobile();
+            } else {
+                drawNonMobile();
+            }
         }
     };
 
@@ -40,14 +44,14 @@ new p5(sketchUtils.wrapSketch(s => {
         if (s.mouseIsPressed) {
             const a = getSlinky();
 
-            s.ellipse(a.x, a.y, 50, 50);
+            s.ellipse(a.x, a.y, 100, 100);
         }
     }
 
     function drawNonMobile() {
         const a = getSlinky();
         if (!s.mouseIsPressed) {
-            s.ellipse(a.x, a.y, 50, 50);
+            s.ellipse(a.x, a.y, 100, 100);
         }
     }
 

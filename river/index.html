@@ -1,0 +1,165 @@
+<link href="https://fonts.googleapis.com/css?family=Varela+Round&display=swap" rel="stylesheet">
+<link href="../styles.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.10.2/p5.min.js"></script>
+<script type="module">
+    import sketchUtils from '../utils/sketchUtils.mjs';
+
+    new p5(sketchUtils.wrapSketch(s => {
+
+        class Drop {
+            static seeDistance = 100;
+            static accelerationLimit = 0.1;
+            static velocityLimit = 3;
+
+            constructor(p, v) {
+                this.p = p;
+                this.v = v;
+                this.a = s.createVector(0, 0);
+            }
+
+            update() {
+                this.a.limit(Drop.accelerationLimit);
+                this.v.add(this.a);
+                this.v.limit(Drop.velocityLimit);
+                this.p.add(this.v);
+            }
+
+            show(graphics) {
+                const nextP = p5.Vector.add(this.p, this.v);
+                graphics.line(this.p.x, this.p.y, nextP.x, nextP.y);
+            }
+
+            sees(rock) {
+                if (this.p.dist(rock.p) < Drop.seeDistance) {
+                    const diff = p5.Vector.sub(rock.p, this.p);
+
+                    const angleBetween = s.abs(s.degrees(diff.angleBetween(this.v)));
+                    if (angleBetween < 90) {
+                        diff.add(this.p);
+                        // s.line(diff.x, diff.y, this.p.x, this.p.y);
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            follow(rock) {
+                console.log('follow');
+                const diff = p5.Vector.sub(rock.p, this.p);
+                // diff.mult(0.1);
+                this.a.add(diff);
+            }
+        }
+
+        class Rock {
+            static velocityLimit = 0.5;
+            static accelerationLimit = 0.01;
+
+            constructor(p) {
+                this.p = p;
+                this.v = s.createVector(0, 0);
+                this.a = s.createVector(0, 0);
+            }
+
+            update() {
+                this.a.limit(Rock.accelerationLimit);
+                this.v.add(this.a);
+                this.v.limit(Rock.velocityLimit);
+                this.p.add(this.v);
+                if (this.p.y < 0) {
+                    this.p.y = s.height;
+                }
+            }
+
+            show(graphics) {
+                graphics.ellipse(this.p.x, this.p.y, 10, 10);
+            }
+
+            follow(drop) {
+                const diff = p5.Vector.sub(drop.p, this.p);
+                diff.mult(0.001);
+                this.a.add(diff);
+            }
+        }
+
+        let rocks, drops, rockGraphics, dropGraphics;
+
+        s.setup = () => {
+            s.colorMode(s.HSB);
+            dropGraphics.strokeWeight(0.4);
+        };
+
+        s.updateSketch = () => {
+            s.background(255);
+            rocks = [];
+            drops = [];
+            const amount = 10;
+            for (let i = 0; i < amount; i++) {
+                rocks.push(new Rock(s.createVector(sketchUtils.center.x + s.noise(i) * 100, (i + 0.5) / amount * s.height)));
+            }
+            // drops.push(new Drop(sketchUtils.center.copy(), s.createVector(0, 50)));
+            rockGraphics = s.createGraphics(s.width, s.height);
+            dropGraphics = s.createGraphics(s.width, s.height);
+        };
+
+        s.draw = () => {
+            if (s.frameCount % 50 === 0) {
+                addDrop();
+            }
+            rockGraphics.background(255);
+            rocks.forEach(r => {
+                r.update();
+                r.show(rockGraphics);
+            });
+
+            for (let i = 0; i < rocks.length; i++) {
+                const firstRock = rocks[i];
+                let secondRock = rocks[i + 1];
+                if (i === rocks.length - 1) {
+                    secondRock = rocks[0];
+                }
+                const distance = firstRock.p.dist(secondRock.p);
+                if (distance < s.height / 2 && distance > s.height * 0.15) {
+                    rockGraphics.line(firstRock.p.x, firstRock.p.y, secondRock.p.x, secondRock.p.y);
+                    rocks.splice(i, 0, new Rock(p5.Vector.lerp(firstRock.p, secondRock.p, 0.5)));
+                    break;
+                }
+            }
+
+
+            drops.forEach(d => {
+                d.update();
+                d.show(dropGraphics);
+                rocks.forEach(r => {
+                    if (d.sees(r)) {
+                        d.follow(r);
+                        r.follow(d);
+                    }
+                });
+            });
+
+            const mouse = s.createVector(s.mouseX, s.mouseY);
+            s.image(rockGraphics, 0, 0);
+            s.image(dropGraphics, 0, 0);
+            rockGraphics.clear();
+        };
+
+        s.keyPressed = () => {
+        };
+
+        s.mousePressed = () => {
+            addDrop();
+        };
+
+        s.touchstarted = () => {
+        };
+
+        function addDrop() {
+            drops.push(new Drop(s.createVector(sketchUtils.center.x, 0), s.createVector(0, 2)));
+        }
+
+    }));
+</script>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">

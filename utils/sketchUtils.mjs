@@ -79,8 +79,8 @@ const sketchUtils = {
                 const [width, height] = getWindowDimensions(s);
                 s.createCanvas(width, height);
 
-                wrappedSetup();
                 s.updateSketch();
+                wrappedSetup();
                 pg = s.createGraphics(300, 300);
             };
 
@@ -102,6 +102,7 @@ const sketchUtils = {
                 wrappedDraw();
                 // showDebugInfo(s, pg, maxWidth);
             };
+
         };
     }
 };
