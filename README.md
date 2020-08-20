@@ -1,5 +1,5 @@
 # karlmolina.com
-My personal website at [karlmolina.com](karlmolina.com).
+My personal website at [karlmolina.com](https://karlmolina.com).
 
 # Development
 An easy way to have an auto reload server is to use [live-server](https://www.npmjs.com/package/live-server).
