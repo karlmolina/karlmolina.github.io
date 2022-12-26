@@ -5,6 +5,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@pixi/math-extras@7.0.5/dist/math-extras.min.js"></script>
     <link href="../styles.css" rel="stylesheet"/>
     <title></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
 </head>
 <body>
 <script>
@@ -24,27 +25,35 @@
       this.v = createVector(0, 0);
       this.a = createVector(0, 0);
       this._children = [];
+      this.weight = 1;
+      this.pause = false;
     }
 
-    updateAverage() {
-      if (this.lock) {
-        return;
-      }
+    averageChildren() {
       const average = createVector(0, 0);
       for (const child of this.children()) {
         average.add(child.obj.position, average);
-        this.v.add(child.obj.position.subtract(this.obj.position).multiplyScalar(0.1), this.v);
       }
-      // if (this._children.length !== 0) {
-      //   average.multiplyScalar(1 / this._children.length, average);
-      // }
-      // this.v.add(average.subtract(this.obj.position).multiplyScalar(1), this.v);
+      average.multiplyScalar(1 / this.children().length, average);
+      return average;
+    }
+
+    updateAverage() {
+      if (this.lock || this.pause) {
+        return;
+      }
+      for (const child of this.children()) {
+        this.v.add(child.obj.position.subtract(this.obj.position).multiplyScalar(0.1 * child.weight), this.v);
+      }
     }
 
     updatePhysics() {
-      this.a.multiplyScalar(0.06, this.a)
-      this.v.add(this.a, this.v)
-      this.v.multiplyScalar(.99, this.v)
+      if (this.pause) {
+        return;
+      }
+      this.a.multiplyScalar(0.06, this.a);
+      this.v.add(this.a, this.v);
+      this.v.multiplyScalar(.99, this.v);
       this.obj.position.add(this.v, this.obj.position);
     }
 
@@ -70,11 +79,9 @@
   const height = window.innerHeight;
 
   function setup() {
-
-    const nWide = 100;
-    const nHigh = 80;
-    const xSpacing = width / nWide;
-    const ySpacing = height / nHigh;
+    const spacing = 20;
+    const nWide = Math.floor(width / spacing);
+    const nHigh = Math.floor(height / spacing);
     nodes = {};
     state = 0;
 
@@ -84,7 +91,7 @@
     for (let i = 0; i < nHigh; i += 1) {
       for (let j = 0; j < nWide; j += 1) {
         const obj = app.stage.addChild(new PIXI.Graphics(circle.geometry));
-        obj.position.set(j * xSpacing + 10, i * ySpacing + 10);
+        obj.position.set(j * spacing + 10, i * spacing + 10);
         let node = new Node(obj);
         if (i === 0 || j === 0 || j === nWide - 1 || i === nHigh - 1) {
           node.lock = true;
@@ -115,33 +122,50 @@
     mouse.copyFrom(e.global);
     if (mouseIsPressed) {
       mouseNode.obj.position.copyFrom(mouse);
+      mouseNode.pause = true;
+      for (const child of mouseNode.children()) {
+        child.obj.position.copyFrom(mouse);
+        child.pause = true;
+      }
     }
   });
   app.stage.addEventListener('pointerdown', (event) => {
     mouseIsPressed = true;
+    for (const node of Object.values(nodes)) {
+      if (node.lock) {
+        continue;
+      }
+      node.weight = 1;
+      if (event.global.subtract(node.obj.position).magnitude() < 20) {
+        mouseNode = node;
+        mouseNode.weight = 1;
+        break;
+      }
+    }
+    mouseNode.obj.position.copyFrom(mouse);
+    mouseNode.pause = true;
+    for (const child of mouseNode.children()) {
+      child.obj.position.copyFrom(mouse);
+      child.pause = true;
+    }
+
   });
   app.stage.addEventListener('pointerup', (event) => {
     mouseIsPressed = false;
+    mouseNode.weight = 1;
+    mouseNode.obj.position.copyFrom(mouseNode.averageChildren());
+  });
+  app.stage.addEventListener('touchstart', (event) => {
   });
   app.ticker.add((delta) => {
-    if (state === 1) {
-      return;
+    for (const node of Object.values(nodes)) {
+      if (!mouseIsPressed) {
+        node.pause = false;
+      }
+      node.updateAverage();
     }
     for (const node of Object.values(nodes)) {
-      if (createVector(mouse.x, mouse.y).subtract(node.obj.position).magnitude() < 10) {
-        if (!mouseIsPressed) {
-          mouseNode = node;
-        }
-      }
-      if (mouseNode !== node || !mouseIsPressed) {
-        node.updateAverage();
-      }
-    }
-
-    for (const node of Object.values(nodes)) {
-      if (mouseNode !== node || !mouseIsPressed) {
-        node.updatePhysics()
-      }
+      node.updatePhysics();
     }
   });
 </script>

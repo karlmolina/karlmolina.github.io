@@ -2,100 +2,103 @@
 <link href="../styles.css" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.10.2/p5.min.js"></script>
 <script type="module">
-    import sketchUtils from '../utils/sketchUtils.mjs';
+  import sketchUtils from '../utils/sketchUtils.mjs';
 
-    new p5(sketchUtils.wrapSketch(s => {
-        class TreeItem {
-            constructor(p, v, a) {
-                this.p = p;
-                this.prevP = p;
-                this.v = v;
-                this.a = a;
-                this.a.limit(0.05);
-            }
+  new p5(sketchUtils.wrapSketch(s => {
+    class TreeItem {
+      constructor(p, v, a) {
+        this.p = p;
+        this.prevP = p;
+        this.v = v;
+        this.a = a;
+        this.a.limit(0.05);
+      }
 
-            update() {
-                // You could make a decrease constantly
-                this.prevP = this.p.copy();
-                this.v.add(this.a);
-                this.v.limit(1);
-                this.p.add(this.v);
-            }
+      update() {
+        // You could make a decrease constantly
+        this.prevP = this.p.copy();
+        this.v.add(this.a);
+        this.v.limit(1);
+        this.p.add(this.v);
+      }
 
-            show(size) {
-                s.ellipse(this.p.x, this.p.y, size, size);
-                // strokeWeight(size);
-                s.stroke(0, 0, 0, size);
-                // s.line(this.prevP.x, this.prevP.y, this.p.x, this.p.y);
-            }
+      show(size) {
+        s.ellipse(this.p.x, this.p.y, size, size);
+        // strokeWeight(size);
+        s.stroke(0, 0, 0, size);
+        // s.line(this.prevP.x, this.prevP.y, this.p.x, this.p.y);
+      }
+    }
+
+    let treeItems;
+    let reset = false;
+
+    s.setup = () => {
+      s.colorMode(s.HSB);
+    };
+
+    s.updateSketch = () => {
+      s.background(255);
+      treeItems = [];
+      treeItems.push(new TreeItem(s.createVector(s.width / 2, s.height), s.createVector(0, -1), s.createVector(0, 0)));
+    };
+
+    s.draw = () => {
+      for (let j = 0; j < 10; j++) {
+
+        for (let i = treeItems.length - 1; i >= 0; i--) {
+          const item = treeItems[i];
+          item.update();
+          item.show(i / treeItems.length);
+          const splitRate = 0.03;
+          const killRate = i / (treeItems.length * 9);
+          if (s.random() < splitRate) {
+            const maxRotation = 1;
+            const v1 = item.v.copy();
+            const rotateAngle = 0.5;
+            v1.rotate(-rotateAngle);
+            treeItems.push(new TreeItem(item.p.copy(), item.v.copy(), v1));
+            const v2 = item.v.copy();
+            v2.rotate(rotateAngle);
+            treeItems.push(new TreeItem(item.p.copy(), item.v.copy(), v2));
+          } else if (s.random() < killRate && treeItems.length > 2) {
+            treeItems.splice(i, 1);
+          }
         }
-
-        let treeItems;
-        let reset = false;
-
-        s.setup = () => {
-            s.colorMode(s.HSB);
-        };
-
-        s.updateSketch = () => {
-            s.background(255);
-            treeItems = [];
-            treeItems.push(new TreeItem(s.createVector(s.width / 2, s.height), s.createVector(0, -1), s.createVector(0, 0)));
-        };
-
-        s.draw = () => {
-            for (let i = treeItems.length - 1; i >= 0; i--) {
-                const item = treeItems[i];
-                item.update();
-                item.show(i / treeItems.length);
-                const splitRate = 0.03;
-                const killRate = i / (treeItems.length * 10);
-                if (s.random() < splitRate) {
-                    const maxRotation = 1;
-                    const v1 = item.v.copy();
-                    const rotateAngle = 0.5;
-                    v1.rotate(-rotateAngle);
-                    treeItems.push(new TreeItem(item.p.copy(), item.v.copy(), v1));
-                    const v2 = item.v.copy();
-                    v2.rotate(rotateAngle);
-                    treeItems.push(new TreeItem(item.p.copy(), item.v.copy(), v2));
-                } else if (s.random() < killRate && treeItems.length > 2) {
-                    treeItems.splice(i, 1);
-                }
-            }
-            treeItems.forEach(t => {
-                t.update();
-                t.show();
-            });
-        };
+      }
+      // treeItems.forEach(t => {
+      //     t.update();
+      //     t.show();
+      // });
+    };
 
 
-        s.keyPressed = () => {
-            resetTree();
-        };
+    s.keyPressed = () => {
+      resetTree();
+    };
 
-        s.mousePressed = () => {
-            if (!sketchUtils.isTouchDevice) {
-                resetTree();
-            }
-        };
+    s.mousePressed = () => {
+      if (!sketchUtils.isTouchDevice) {
+        resetTree();
+      }
+    };
 
-        s.touchStarted = () => {
-            resetTree();
-        };
+    s.touchStarted = () => {
+      resetTree();
+    };
 
-        function resetTree() {
-            if (reset) {
-                s.updateSketch();
-                reset = false;
-            } else {
-                treeItems = [];
-                reset = true;
-            }
+    function resetTree() {
+      if (reset) {
+        s.updateSketch();
+        reset = false;
+      } else {
+        treeItems = [];
+        reset = true;
+      }
 
-        }
+    }
 
-    }));
+  }));
 </script>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
