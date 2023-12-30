@@ -1,35 +1,43 @@
 <head>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
-          rel="stylesheet">
-    <!--    <link rel="stylesheet" href="styles.css"/>-->
-    <style>
-        body {
-            font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif
-        }
-    </style>
-    <script src="https://unpkg.com/mermaid@8.4.5/dist/mermaid.min.js"></script>
-    <script>mermaid.initialize({startOnLoad: true});</script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script type="module">
-        const renderer = new marked.Renderer();
-        renderer.code = function (code, language) {
-            if (language === 'mermaid') {
-                return '<div class="mermaid">' + code + '</div>';
-            }
-            return '<pre><code>' + code + '</code></pre>';
-        };
+  <link
+    href="https://fonts.googleapis.com/icon?family=Material+Icons"
+    rel="stylesheet"
+  />
+  <!--    <link rel="stylesheet" href="styles.css"/>-->
+  <style>
+    body {
+      font-family: -apple-system, system-ui, BlinkMacSystemFont, 'Segoe UI',
+        Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+  </style>
+  <script src="https://unpkg.com/mermaid@8.4.5/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true })
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script type="module">
+    const renderer = new marked.Renderer()
+    renderer.code = function (code, language) {
+      if (language === 'mermaid') {
+        return '<div class="mermaid">' + code + '</div>'
+      }
+      return '<pre><code>' + code + '</code></pre>'
+    }
 
-        function reqListener() {
-            console.log(this.responseText);
-            document.body.insertAdjacentHTML('afterbegin', marked(this.responseText, {renderer: renderer}));
-            mermaid.init();
-        }
+    function reqListener() {
+      console.log(this.responseText)
+      document.body.insertAdjacentHTML(
+        'afterbegin',
+        marked(this.responseText, { renderer: renderer }),
+      )
+      mermaid.init()
+    }
 
-        var oReq = new XMLHttpRequest();
-        oReq.addEventListener('load', reqListener);
-        oReq.open('GET', 'test.md');
-        oReq.send();
-    </script>
-    <title></title>
+    var oReq = new XMLHttpRequest()
+    oReq.addEventListener('load', reqListener)
+    oReq.open('GET', 'test.md')
+    oReq.send()
+  </script>
+  <title></title>
 </head>
 <body></body>

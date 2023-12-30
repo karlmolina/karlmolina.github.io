@@ -5,91 +5,91 @@
 <link href="../styles.css" rel="stylesheet" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.10.2/p5.min.js"></script>
 <script type="module">
-  import sketchUtils from '../../src/utils/sketchUtils.mjs';
+  import sketchUtils from '../../src/utils/sketchUtils.mjs'
 
   new p5(
     sketchUtils.wrapSketch((s) => {
       class Joint {
         constructor(p) {
-          this.p = p;
-          this.v = s.createVector(0, 0);
-          this.a = s.createVector(0, 0);
-          this.connected = [];
+          this.p = p
+          this.v = s.createVector(0, 0)
+          this.a = s.createVector(0, 0)
+          this.connected = []
         }
 
         update() {
           this.connected.forEach((j) => {
-            const diff = p5.Vector.sub(j.p, this.p);
-            diff.normalize();
+            const diff = p5.Vector.sub(j.p, this.p)
+            diff.normalize()
             // this.a.add(diff);
             // diff.mult(1 / (1 + this.p.dist(j.p)));
-            this.v.add(diff);
+            this.v.add(diff)
 
             // diff.add(this.p);
             // s.line(this.p.x, this.p.y, diff.x, diff.y);
-          });
+          })
 
           // this.a.limit(0.1);
-          this.v.add(this.a);
+          this.v.add(this.a)
           // this.v.limit(5);
-          this.p.add(this.v);
+          this.p.add(this.v)
         }
 
         show() {
           // s.ellipse(this.p.x, this.p.y, 10, 10);
-          const prevP = p5.Vector.sub(this.p, this.v);
-          s.line(this.p.x, this.p.y, prevP.x, prevP.y);
+          const prevP = p5.Vector.sub(this.p, this.v)
+          s.line(this.p.x, this.p.y, prevP.x, prevP.y)
         }
 
         connect(joint) {
-          this.connected.push(joint);
+          this.connected.push(joint)
         }
       }
 
-      let joints;
-      let mouse;
+      let joints
+      let mouse
 
       s.setup = () => {
-        s.colorMode(s.HSB);
-        s.strokeWeight(0.5);
+        s.colorMode(s.HSB)
+        s.strokeWeight(0.5)
         // s.stroke(255);
-      };
+      }
 
       s.updateSketch = () => {
         // s.background(255);
-        joints = [];
-        joints.push(new Joint(sketchUtils.center.copy()));
-        mouse = s.createVector(s.mouseX, s.mouseY);
-      };
+        joints = []
+        joints.push(new Joint(sketchUtils.center.copy()))
+        mouse = s.createVector(s.mouseX, s.mouseY)
+      }
 
       s.draw = () => {
-        mouse.set(s.mouseX, s.mouseY);
+        mouse.set(s.mouseX, s.mouseY)
 
         // s.background(255);
         for (let i = 0; i < 50; i++) {
           joints.forEach((j) => {
-            j.update();
-            j.show();
-          });
+            j.update()
+            j.show()
+          })
         }
-      };
+      }
 
       s.keyPressed = () => {
         if (s.key === ' ') {
-          s.background(255);
+          s.background(255)
         }
         if (s.key === 's') {
-          s.save(`${s.frameCount}.png`);
+          s.save(`${s.frameCount}.png`)
         }
-      };
+      }
 
       s.mousePressed = () => {
-        joints[0].connect(new Joint(mouse));
-      };
+        joints[0].connect(new Joint(mouse))
+      }
 
-      s.touchstarted = () => {};
+      s.touchstarted = () => {}
     }),
-  );
+  )
 </script>
 
 <meta

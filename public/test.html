@@ -6,26 +6,26 @@
   <link rel="stylesheet" href="styles.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.10.2/p5.min.js"></script>
   <script type="module">
-    import sketchUtils from '../src/utils/sketchUtils.mjs';
+    import sketchUtils from '../src/utils/sketchUtils.mjs'
 
-    sketchUtils.addSettingsIcon();
-    const settingsIcon = document.getElementById('settings');
+    sketchUtils.addSettingsIcon()
+    const settingsIcon = document.getElementById('settings')
     settingsIcon.onclick = () => {
       if (document.body.style.backgroundColor === 'black') {
-        sketchUtils.setSettingsIconBrightness('light');
-        document.body.style.backgroundColor = 'white';
+        sketchUtils.setSettingsIconBrightness('light')
+        document.body.style.backgroundColor = 'white'
       } else {
-        sketchUtils.setSettingsIconBrightness('dark');
-        document.body.style.backgroundColor = 'black';
+        sketchUtils.setSettingsIconBrightness('dark')
+        document.body.style.backgroundColor = 'black'
       }
-    };
+    }
 
-    var c = 0;
+    var c = 0
 
     function setup() {
-      createCanvas(windowWidth, windowHeight);
-      noStroke();
-      colorMode(HSB);
+      createCanvas(windowWidth, windowHeight)
+      noStroke()
+      colorMode(HSB)
     }
 
     function draw() {
@@ -39,10 +39,10 @@
       // }
     }
 
-    var rosana = 'awesome';
-    var karl = 'her brother';
-    var philip = 'her other brother';
-    console.log(rosana, karl, philip);
+    var rosana = 'awesome'
+    var karl = 'her brother'
+    var philip = 'her other brother'
+    console.log(rosana, karl, philip)
   </script>
   <title></title>
 </head>

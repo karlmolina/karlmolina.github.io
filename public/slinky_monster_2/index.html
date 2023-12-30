@@ -1,37 +1,34 @@
 <head>
-    <link rel="stylesheet" href="../styles.css"/>
+  <link rel="stylesheet" href="../styles.css" />
 </head>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.10.2/p5.min.js"></script>
 <script>
-    function setup() {
-        colorMode(HSB, 255);
-        createCanvas(windowWidth, windowHeight);
-        const something = 1;
-        hello('philip');
-        strokeWeight(5);
+  function setup() {
+    colorMode(HSB, 255)
+    createCanvas(windowWidth, windowHeight)
+    const something = 1
+    hello('philip')
+    strokeWeight(5)
+  }
+
+  function draw() {
+    const previous = createVector(pmouseX, pmouseY)
+    const mouse = createVector(mouseX, mouseY)
+    const vectors = []
+    const amount = previous.dist(mouse) / 10
+
+    for (let i = 0; i < amount; i++) {
+      const vector = p5.Vector.lerp(previous, mouse, i / amount)
+      vectors.push(vector)
     }
 
-    function draw() {
-        const previous = createVector(pmouseX, pmouseY);
-        const mouse = createVector(mouseX, mouseY);
-        const vectors = [];
-        const amount = previous.dist(mouse) / 10;
+    vectors.forEach((v) => {
+      stroke(random(0, 255), 255, 255)
+      ellipse(v.x, v.y, 100, 100)
+    })
+  }
 
-        for (let i = 0; i < amount; i++) {
-            const vector = p5.Vector.lerp(previous, mouse, i / amount);
-            vectors.push(vector);
-
-        }
-
-        vectors.forEach(v => {
-            stroke(random(0, 255,), 255, 255);
-            ellipse(v.x, v.y, 100, 100);
-        });
-    }
-
-    function hello(x) {
-        console.log(x);
-    }
-
-
+  function hello(x) {
+    console.log(x)
+  }
 </script>

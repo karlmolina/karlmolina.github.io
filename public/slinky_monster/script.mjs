@@ -11,67 +11,67 @@
  * - stroke weight
  */
 
-import sketchUtils from '../../src/utils/sketchUtils.mjs';
+import sketchUtils from '../../src/utils/sketchUtils.mjs'
 
 new p5(
   sketchUtils.wrapSketch((s) => {
-    let v;
-    let b;
-    const period = 10;
+    let v
+    let b
+    const period = 10
 
     s.setup = () => {
-      s.strokeWeight(0.3);
-    };
+      s.strokeWeight(0.3)
+    }
 
     s.updateSketch = () => {
-      b = s.createVector(s.width / 2, s.height / 2);
-      v = s.createVector(0, 25);
-    };
+      b = s.createVector(s.width / 2, s.height / 2)
+      v = s.createVector(0, 25)
+    }
 
     s.draw = () => {
       if (sketchUtils.isTouchDevice) {
-        drawMobile();
+        drawMobile()
       } else {
-        drawNonMobile();
+        drawNonMobile()
       }
-    };
+    }
 
     function drawMobile() {
       if (s.mouseIsPressed) {
-        const a = getSlinky();
+        const a = getSlinky()
 
-        s.ellipse(a.x, a.y, 50, 50);
+        s.ellipse(a.x, a.y, 50, 50)
       }
     }
 
     function drawNonMobile() {
-      const a = getSlinky();
+      const a = getSlinky()
       if (!s.mouseIsPressed) {
-        s.ellipse(a.x, a.y, 50, 50);
+        s.ellipse(a.x, a.y, 50, 50)
       }
     }
 
     function getSlinky() {
-      v.rotate(1 / period);
-      let mouse = s.createVector(s.mouseX, s.mouseY);
-      b = p5.Vector.lerp(b, mouse, 0.008);
-      return p5.Vector.add(v, b);
+      v.rotate(1 / period)
+      let mouse = s.createVector(s.mouseX, s.mouseY)
+      b = p5.Vector.lerp(b, mouse, 0.008)
+      return p5.Vector.add(v, b)
     }
 
     s.touchMoved = () => {
-      return false;
-    };
+      return false
+    }
 
     /* prevents the mobile browser from processing some default
      * touch events, like swiping left for "back" or scrolling
      * the page.
      */
     document.ontouchmove = function (event) {
-      event.preventDefault();
-    };
+      event.preventDefault()
+    }
 
     s.keyPressed = () => {
-      s.background(255);
-    };
+      s.background(255)
+    }
   }),
-);
+)
