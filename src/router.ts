@@ -2,13 +2,26 @@ import './style.css';
 
 import { html } from 'htl';
 import Navigo from 'navigo';
+import p5 from 'p5';
 
+import { $ } from './lib/html-utils.ts';
 import { setAppContent } from './lib/set-app-content.ts';
+import tree from './sketches/tree.ts';
+import sketchUtils from './utils/sketch-utils.ts';
 
 const router = new Navigo('/', { hash: true });
 
+const sketchList = ['connected', 'slinky monster', 'tree', 'tornado hole'];
 router
   .on(() => {
+    const link = (name: string) =>
+      html`<li class="my-2 sm:my-4">
+        <a
+          class="inline-block w-full text-2xl hover:bg-teal-100 sm:text-4xl"
+          href="#/${name}"
+          >${name}</a
+        >
+      </li>`;
     setAppContent(html`
       <div class="m-auto max-w-screen-lg px-8 pt-16 sm:px-16 sm:pt-24">
         <h1
@@ -17,20 +30,16 @@ router
         >
           karlmolina.com
         </h1>
-        <ul class="sketch-list">
-          <li><a class="sketch-link" href="#/connected">connected</a></li>
-          <li>
-            <a class="sketch-link" href="#/slinky_monster">slinky monster</a>
-          </li>
-          <li><a class="sketch-link" href="#/tree">tree</a></li>
-          <li><a class="sketch-link" href="#/tornado_hole">tornado hole</a></li>
+        <ul class="font-barlow my-4 list-none text-left text-[114b5f]">
+          ${sketchList.map((name) => link(name))}
         </ul>
       </div>
     `);
   })
   .on('/tree', () => {
     document.title = 'Tree';
-    console.log('tree');
+    setAppContent(html`<div id="canvas"></div>`);
+    new p5(sketchUtils.wrapSketch(tree), $('canvas'));
   })
   .resolve();
 
