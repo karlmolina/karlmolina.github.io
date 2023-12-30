@@ -73,5 +73,8 @@ main.on('/tornado%20hole', () => {
   }
   window.addEventListener('resize', resize)
 })
+main.on('github', () => {
+  window.location.href = 'https://github.com/karlmolina'
+})
 main.resolve()
 export default main
