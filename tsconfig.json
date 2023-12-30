@@ -19,8 +19,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": [
-    "./src",
-    "./prettier.config.js"
-  ]
+  "include": ["./src", "./prettier.config.js", "./postcss.config.js"]
 }
