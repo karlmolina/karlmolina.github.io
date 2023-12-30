@@ -3,12 +3,8 @@ import '@pixi/math-extras';
 import * as PIXI from 'pixi.js';
 import { Application, Point } from 'pixi.js';
 
-function createVector(x, y) {
-  return new PIXI.Point(x, y);
-}
-
 class Node {
-  obj: any;
+  obj: PIXI.Graphics;
   lock: boolean;
   index: number;
   private v: Point;
@@ -16,17 +12,19 @@ class Node {
   private _children: number[];
   weight: number;
   pause: boolean;
-  constructor(obj) {
+  constructor(obj: PIXI.Graphics, index: number) {
     this.obj = obj;
-    this.v = createVector(0, 0);
-    this.a = createVector(0, 0);
+    this.index = index;
+    this.v = new Point(0, 0);
+    this.a = new Point(0, 0);
     this._children = [];
     this.weight = 1;
     this.pause = false;
+    this.lock = false;
   }
 
   averageChildren(nodes: Node[]) {
-    const average = createVector(0, 0);
+    const average = new Point(0, 0);
     for (const child of this.children(nodes)) {
       average.add(child.obj.position, average);
     }
@@ -100,24 +98,28 @@ export default () => {
     for (let j = 0; j < nWide; j += 1) {
       const obj = app.stage.addChild(new PIXI.Graphics(circle.geometry));
       obj.position.set(j * spacing + 10, i * spacing + 10);
-      const node = new Node(obj);
+      const node = new Node(obj, i * nWide + j);
       if (i === 0 || j === 0 || j === nWide - 1 || i === nHigh - 1) {
         node.lock = true;
       }
-      node.index = i * nWide + j;
       nodes[node.index] = node;
       // above
-      node.addChild(nodes[(i - 1) * nWide + j]);
+      const above = nodes[(i - 1) * nWide + j];
+      node.addChild(above);
       // above left
-      // node.addChild(nodes[(i - 1) * n + j - 1]);
+      // node.addChild(nodes[(i - 2) * nWide + j - 1]);
       // above right
-      // node.addChild(nodes[(i - 1) * n + j + 1]);
+      // node.addChild(nodes[(i - 1) * nWide + j + 1]);
       // left
       node.addChild(nodes[i * nWide + j - 1]);
+      // below
+      // node.addChild(nodes[(i + 1) * nWide + j]);
     }
   }
   app.stage.interactive = true;
   app.stage.hitArea = app.screen;
+  const mouse = new Point();
+  let mouseIsPressed = false;
   app.stage.addEventListener('pointermove', (e) => {
     mouse.copyFrom(e.global);
     if (mouseIsPressed) {
@@ -165,9 +167,5 @@ export default () => {
       node.updatePhysics();
     }
   });
-
-  // Create the application helper and add its render target to the page
-  const mouse = new Point();
-  let mouseIsPressed = false;
   return app;
 };
