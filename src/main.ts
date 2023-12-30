@@ -7,6 +7,7 @@ import p5 from 'p5'
 import { $ } from './lib/html-utils.ts'
 import { setAppContent } from './lib/set-app-content.ts'
 import connected from './sketches/connected.ts'
+import slinkyMonster from './sketches/slinky-monster.ts'
 import tornadoHole from './sketches/tornado-hole.ts'
 import tree from './sketches/tree.ts'
 import sketchUtils from './utils/sketch-utils.ts'
@@ -16,7 +17,7 @@ const main = new Navigo('/', { hash: true })
 const sketchList = ['connected', 'slinky monster', 'tree', 'tornado hole']
 const p5Sketches = {
   connected: connected,
-  'slinky monster': connected,
+  'slinky monster': slinkyMonster,
   tree: tree,
 }
 let sketch: p5 | undefined
