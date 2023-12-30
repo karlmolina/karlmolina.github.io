@@ -1,11 +1,12 @@
-import { html } from "htl";
+import { html } from 'htl';
 import Navigo from 'navigo';
+import nothing from 'nothing';
 
-const router = new Navigo("/", { hash: true });
+const router = new Navigo('/', { hash: true });
 
 router
-  .on("/tree", () => {
-    document.title = "Tree";
+  .on('/tree', () => {
+    document.title = 'Tree';
   })
   .resolve();
 
