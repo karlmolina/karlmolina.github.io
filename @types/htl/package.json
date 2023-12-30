@@ -1,0 +1,19 @@
+{
+  "name": "@types/htl",
+  "version": "1.0.0",
+  "description": "",
+  "main": "",
+  "scripts": {},
+  "types": "index.d.ts",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": {
+        "default": "./index.d.ts"
+      }
+    }
+  }
+}

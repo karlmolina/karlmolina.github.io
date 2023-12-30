@@ -1,0 +1,45 @@
+export default {
+  "env": {
+    "browser": true,
+    "es2021": true,
+    "node": true
+  },
+  "extends": [
+    "eslint:recommended",
+    "plugin:import/recommended",
+    "prettier",
+    "plugin:import/typescript",
+    "plugin:@typescript-eslint/eslint-recommended",
+    "plugin:@typescript-eslint/strict",
+    "plugin:@typescript-eslint/stylistic"
+  ],
+  "overrides": [],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "project": "./tsconfig.json",
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "plugins": ["@typescript-eslint", "simple-import-sort"],
+  "rules": {
+    "simple-import-sort/imports": "error",
+    "simple-import-sort/exports": "error",
+    "import/first": "error",
+    "import/newline-after-import": "error",
+    "import/no-duplicates": "error",
+    "import/no-unresolved": [
+      "error",
+      {
+        "ignore": ["aws-lambda"]
+      }
+    ]
+  },
+  "ignorePatterns": [
+    "**/build/**",
+    "**/dist/**",
+    "**/.vite/**",
+    "**/.serverless/**",
+    "amplify/",
+    "**/__tests__/**"
+  ]
+}
