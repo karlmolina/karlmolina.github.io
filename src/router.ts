@@ -6,13 +6,23 @@ import p5 from 'p5';
 
 import { $ } from './lib/html-utils.ts';
 import { setAppContent } from './lib/set-app-content.ts';
+import tornadoHole from './sketches/tornado-hole.ts';
 import tree from './sketches/tree.ts';
 import sketchUtils from './utils/sketch-utils.ts';
 
 const router = new Navigo('/', { hash: true });
 
 const sketchList = ['connected', 'slinky monster', 'tree', 'tornado hole'];
+let sketch: p5 | undefined;
+let resize: () => void;
 router
+  .hooks({
+    before: (done) => {
+      sketch?.remove();
+      resize && window.removeEventListener('resize', resize);
+      done();
+    },
+  })
   .on(() => {
     const link = (name: string) =>
       html`<li class="my-2 sm:my-4">
@@ -35,12 +45,27 @@ router
         </ul>
       </div>
     `);
-  })
-  .on('/tree', () => {
-    document.title = 'Tree';
-    setAppContent(html`<div id="canvas"></div>`);
-    new p5(sketchUtils.wrapSketch(tree), $('canvas'));
-  })
-  .resolve();
+  });
 
+for (const name of sketchList) {
+  // url encode name
+  const encodedName = name.replace(/ /g, '%20');
+  router.on(`/${encodedName}`, () => {
+    document.title = name;
+    setAppContent(html`<div id="canvas"></div>`);
+    sketch = new p5(sketchUtils.wrapSketch(tree), $('canvas'));
+  });
+}
+router.on('/tornado%20hole', () => {
+  document.title = 'tornado hole';
+  let app = tornadoHole();
+  document.body.replaceChildren(app.view);
+  resize = () => {
+    app.destroy(true);
+    app = tornadoHole();
+    document.body.replaceChildren(app.view);
+  };
+  window.addEventListener('resize', resize);
+});
+router.resolve();
 export default router;

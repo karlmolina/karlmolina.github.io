@@ -1,6 +1,6 @@
 import p5 from 'p5';
 
-function getWindowDimensions(s) {
+function getWindowDimensions(s: Sketch) {
   const ratio = s.windowWidth / s.windowHeight;
 
   let width = s.windowWidth,
@@ -20,7 +20,7 @@ function getWindowDimensions(s) {
   return [width, height];
 }
 
-function showDebugInfo(s, pg, maxWidth) {
+function showDebugInfo(s: Sketch, pg: Sketch, maxWidth: number) {
   pg.clear();
   const debugInfo = [
     'fps: ' + Math.round(s.frameRate()),

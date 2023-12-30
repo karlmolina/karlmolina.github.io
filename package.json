@@ -22,13 +22,15 @@
     "prettier": "^3.0.3",
     "prettier-plugin-tailwindcss": "^0.4.1",
     "@typescript-eslint/eslint-plugin": "^6.7.2",
-    "@typescript-eslint/parser": "^6.7.2"
+    "@typescript-eslint/parser": "^6.7.2",
+    "@types/p5": "^1.7.6"
   },
   "dependencies": {
-    "@types/p5": "^1.7.6",
+    "@pixi/math-extras": "^7.3.2",
     "htl": "^0.3.1",
     "navigo": "^8.11.1",
-    "p5": "^1.9.0"
+    "p5": "^1.9.0",
+    "pixi.js": "^7.3.2"
   },
   "workspaces": [
     "@types/*"
