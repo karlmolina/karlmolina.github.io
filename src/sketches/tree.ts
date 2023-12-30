@@ -59,7 +59,6 @@ export default (s: Sketch) => {
   };
 
   s.draw = () => {
-    console.log('tree items length' + treeItems.length);
     for (let j = 0; j < 10; j++) {
       for (let i = treeItems.length - 1; i >= 0; i--) {
         const item = treeItems[i];
@@ -69,7 +68,6 @@ export default (s: Sketch) => {
         const age = timeSince(item.birthday);
         const splitRate = 0.001 * age * (1 / item.size + 0.02);
         const killRate = 0.0001 * treeItems.length;
-        // console.log(Math.ceil(item.size));
         if (
           item.p.x < 0 ||
           item.p.x > s.width ||
@@ -81,7 +79,6 @@ export default (s: Sketch) => {
           (age > 200 && item.size < 6)
           // (treeItems.length > 200 && item.size < 5) ||
         ) {
-          console.log('killed');
           treeItems.splice(i, 1);
           // draw a leaf at this position
 
