@@ -20,15 +20,15 @@ class TreeItem {
   update() {
     // You could make a decrease constantly
     this.v.add(this.a);
-    this.v.setMag(1.1);
-    this.v.add(Vector.random2D().limit(0.9 / this.size));
+    this.v.setMag(1.2);
+    this.v.add(Vector.random2D().limit(0.9 / this.size + 0.01));
     this.p.add(this.v);
     this.size *= 0.998;
   }
 
   show(s: Sketch, size: number) {
     // fill brown
-    s.stroke(255);
+    s.stroke(s.random(0, 10), s.random(50, 60), s.random(50, 55));
     s.fill(0);
     s.ellipse(this.p.x, this.p.y, size, size);
     // strokeWeight(size);
@@ -66,8 +66,9 @@ export default (s: Sketch) => {
         item.update();
         item.show(s, item.size);
         const timeSince = (birthday: number) => new Date().getTime() - birthday;
-        const splitRate = (timeSince(item.birthday) / 1000) * (1 / item.size);
-        const killRate = i / (treeItems.length * 9.5);
+        const age = timeSince(item.birthday);
+        const splitRate = 0.001 * age * (1 / item.size + 0.02);
+        const killRate = 0.0001 * treeItems.length;
         // console.log(Math.ceil(item.size));
         if (
           item.p.x < 0 ||
@@ -75,18 +76,24 @@ export default (s: Sketch) => {
           item.p.y < 0 ||
           item.p.y > s.height ||
           item.size < 5 ||
-          // (s.random() < killRate && item.size < 5) ||
+          // s.random() < killRate ||
+          treeItems.length > 200 ||
+          (age > 200 && item.size < 6)
           // (treeItems.length > 200 && item.size < 5) ||
-          treeItems.length > 200
         ) {
           console.log('killed');
           treeItems.splice(i, 1);
           // draw a leaf at this position
-          s.fill(255);
+
+          s.fill(s.random(0, 10), s.random(50, 60), s.random(50, 55));
           s.ellipse(item.p.x, item.p.y, item.size, item.size);
-          s.fill(s.random(0, 360), 100, 100, 0.5);
+          s.fill(s.random(120, 180), s.random(90, 100), s.random(30, 70), 0.5);
+          s.push();
+          s.translate(item.p.x + s.random() * 25, item.p.y + s.random() * 25);
+          s.rotate(s.random() * 2 * Math.PI);
           s.noStroke();
-          s.ellipse(item.p.x, item.p.y, s.random() * 20, s.random() * 20);
+          s.ellipse(0, 0, s.random() * 50, s.random() * 50);
+          s.pop();
         } else if (s.random() < splitRate) {
           const v1 = item.v.copy();
           const rotateAngle = 0.5;
@@ -95,7 +102,9 @@ export default (s: Sketch) => {
           treeItems.push(
             new TreeItem(item.p.copy(), item.v.copy(), v1, newSize(item.size)),
           );
-          // item.size = newSize(item.size);
+          if (item.size < 10) {
+            item.size = newSize(item.size);
+          }
           const v2 = item.v.copy();
           v2.rotate(rotateAngle);
           treeItems.push(
