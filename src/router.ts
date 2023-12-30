@@ -13,6 +13,7 @@ import sketchUtils from './utils/sketch-utils.ts';
 const router = new Navigo('/', { hash: true });
 
 const sketchList = ['connected', 'slinky monster', 'tree', 'tornado hole'];
+const p5Sketches = ['connected', 'slinky monster', 'tree'];
 let sketch: p5 | undefined;
 let resize: () => void;
 router
@@ -36,18 +37,18 @@ router
       <div class="m-auto max-w-screen-lg px-8 pt-16 sm:px-16 sm:pt-24">
         <h1
           class="
-          border-b-0.05em mb-1 mt-2 box-border break-words border-teal-500 font-[questrial] text-4xl font-normal tracking-tighter text-[1A936F] underline sm:text-6xl md:text-8xl"
+          border-b-0.05em mb-1 mt-2 box-border break-words border-teal-500 font-[questrial] text-4xl font-normal tracking-tighter text-[#1A936F] underline sm:text-6xl md:text-8xl"
         >
           karlmolina.com
         </h1>
-        <ul class="font-barlow my-4 list-none text-left text-[114b5f]">
+        <ul class="font-barlow my-4 list-none text-left text-[#114b5f]">
           ${sketchList.map((name) => link(name))}
         </ul>
       </div>
     `);
   });
 
-for (const name of sketchList) {
+for (const name of p5Sketches) {
   // url encode name
   const encodedName = name.replace(/ /g, '%20');
   router.on(`/${encodedName}`, () => {
