@@ -87,7 +87,7 @@ main.on('/blob', () => {
   document.body.replaceChildren(app.view)
   resize = () => {
     app.destroy(true)
-    app = tornadoHole()
+    app = blob()
     document.body.replaceChildren(app.view)
   }
   window.addEventListener('resize', resize)

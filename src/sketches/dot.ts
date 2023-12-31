@@ -4,9 +4,9 @@ export default class Dot {
   obj: Graphics
   lock: boolean
   index: number
-  protected v: Point
+  v: Point
   protected a: Point
-  protected _children: number[]
+  _children: Set<number>
   weight: number
   pause: boolean
   constructor(obj: Graphics, index: number) {
@@ -14,7 +14,7 @@ export default class Dot {
     this.index = index
     this.v = new Point(0, 0)
     this.a = new Point(0, 0)
-    this._children = []
+    this._children = new Set()
     this.weight = 1
     this.pause = false
     this.lock = false
@@ -34,14 +34,35 @@ export default class Dot {
       return
     }
     if (!this.lock) {
-      this._children.push(node.index)
+      this._children.add(node.index)
     }
     if (!node.lock) {
-      node._children.push(this.index)
+      node._children.add(this.index)
     }
   }
 
-  children(nodes: Dot[]) {
-    return this._children.map((i) => nodes[i])
+  removeChild(node: Dot) {
+    this._children.delete(node.index)
+    node._children.delete(this.index)
   }
+
+  children(nodes: Dot[]) {
+    return [...this._children].map((i) => nodes[i])
+  }
+
+  furthestChild(nodes: Dot[]) {
+    const index = [...this._children].reduce((a, b) =>
+      this.obj.position.subtract(nodes[a].obj.position).magnitude() >
+      this.obj.position.subtract(nodes[b].obj.position).magnitude()
+        ? a
+        : b,
+    )
+    return nodes[index]
+  }
+
+  sharesChild(node: Dot) {
+    return [...this._children].some((i) => node._children.has(i))
+  }
+
+  childrenLength = () => this._children.size
 }
