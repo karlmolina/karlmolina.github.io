@@ -3,35 +3,9 @@ import '@pixi/math-extras'
 import * as PIXI from 'pixi.js'
 import { Application, Point } from 'pixi.js'
 
-class Node {
-  obj: PIXI.Graphics
-  lock: boolean
-  index: number
-  private v: Point
-  private a: Point
-  private _children: number[]
-  weight: number
-  pause: boolean
-  constructor(obj: PIXI.Graphics, index: number) {
-    this.obj = obj
-    this.index = index
-    this.v = new Point(0, 0)
-    this.a = new Point(0, 0)
-    this._children = []
-    this.weight = 1
-    this.pause = false
-    this.lock = false
-  }
+import Dot from './dot.ts'
 
-  averageChildren(nodes: Node[]) {
-    const average = new Point(0, 0)
-    for (const child of this.children(nodes)) {
-      average.add(child.obj.position, average)
-    }
-    average.multiplyScalar(1 / this.children(nodes).length, average)
-    return average
-  }
-
+class Node extends Dot {
   updateAverage(nodes: Node[]) {
     if (this.lock || this.pause) {
       return
@@ -55,27 +29,9 @@ class Node {
     this.v.multiplyScalar(0.99, this.v)
     this.obj.position.add(this.v, this.obj.position)
   }
-
-  addChild(node: Node) {
-    if (node === undefined) {
-      return
-    }
-    if (!this.lock) {
-      this._children.push(node.index)
-    }
-    if (!node.lock) {
-      node._children.push(this.index)
-    }
-  }
-
-  children(nodes: Node[]) {
-    return this._children.map((i) => nodes[i])
-  }
 }
 export default () => {
   let mouseNode: Node
-  // const { createVector, color, stroke,
-  // strokeWeight, point, createCanvas, background, mouseX, mouseY, mouseIsPressed} = s;
 
   const width = window.innerWidth
   const height = window.innerHeight

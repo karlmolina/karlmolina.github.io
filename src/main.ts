@@ -6,6 +6,7 @@ import p5 from 'p5'
 
 import { $ } from './lib/html-utils.ts'
 import { setAppContent } from './lib/set-app-content.ts'
+import blob from './sketches/blob.ts'
 import connected from './sketches/connected.ts'
 import slinkyMonster from './sketches/slinky-monster.ts'
 import tornadoHole from './sketches/tornado-hole.ts'
@@ -14,7 +15,13 @@ import sketchUtils from './utils/sketch-utils.ts'
 
 const main = new Navigo('/', { hash: true })
 
-const sketchList = ['connected', 'slinky monster', 'tree', 'tornado hole']
+const sketchList = [
+  'connected',
+  'slinky monster',
+  'tree',
+  'tornado hole',
+  'blob',
+]
 const p5Sketches = {
   connected: connected,
   'slinky monster': slinkyMonster,
@@ -66,6 +73,17 @@ for (const [name, sketchFunction] of Object.entries(p5Sketches)) {
 main.on('/tornado%20hole', () => {
   document.title = 'tornado hole'
   let app = tornadoHole()
+  document.body.replaceChildren(app.view)
+  resize = () => {
+    app.destroy(true)
+    app = tornadoHole()
+    document.body.replaceChildren(app.view)
+  }
+  window.addEventListener('resize', resize)
+})
+main.on('/blob', () => {
+  document.title = 'blob'
+  let app = blob()
   document.body.replaceChildren(app.view)
   resize = () => {
     app.destroy(true)
