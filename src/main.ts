@@ -5,7 +5,7 @@ import Navigo from 'navigo'
 import p5 from 'p5'
 
 import { $ } from './lib/html-utils.ts'
-import { setAppContent } from './lib/set-app-content.ts'
+import home from './pages/home.ts'
 import blob from './sketches/blob.ts'
 import connected from './sketches/connected.ts'
 import slinkyMonster from './sketches/slinky-monster.ts'
@@ -13,7 +13,7 @@ import tornadoHole from './sketches/tornado-hole.ts'
 import tree from './sketches/tree.ts'
 import sketchUtils from './utils/sketch-utils.ts'
 
-const main = new Navigo('/', { hash: true })
+const navigo = new Navigo('/', { hash: true })
 
 const sketchList = [
   'connected',
@@ -29,7 +29,7 @@ const p5Sketches = {
 }
 let sketch: p5 | undefined
 let resize: () => void
-main
+navigo
   .hooks({
     before: (done) => {
       document.body.replaceChildren()
@@ -39,39 +39,19 @@ main
     },
   })
   .on(() => {
-    const link = (name: string) =>
-      html`<li class="my-2 sm:my-4">
-        <a
-          class="inline-block w-full text-2xl hover:bg-teal-100 sm:text-4xl"
-          href="#/${name}"
-          >${name}</a
-        >
-      </li>`
-    setAppContent(html`
-      <div class="m-auto max-w-screen-lg px-8 pt-16 sm:px-16 sm:pt-24">
-        <h1
-          class="
-          border-b-0.05em mb-1 mt-2 box-border break-words border-teal-500 font-[questrial] text-4xl font-normal tracking-tighter text-[#1A936F] underline sm:text-6xl md:text-8xl"
-        >
-          karlmolina.com
-        </h1>
-        <ul class="font-barlow my-4 list-none text-left text-[#114b5f]">
-          ${sketchList.map((name) => link(name))}
-        </ul>
-      </div>
-    `)
+    document.body.replaceChildren(home(sketchList))
   })
 
 for (const [name, sketchFunction] of Object.entries(p5Sketches)) {
   // url encode name
   const encodedName = name.replace(/ /g, '%20')
-  main.on(`/${encodedName}`, () => {
+  navigo.on(`/${encodedName}`, () => {
     document.title = name
-    setAppContent(html`<div id="canvas"></div>`)
+    document.body.replaceChildren(html`<div id="canvas"></div>`)
     sketch = new p5(sketchUtils.wrapSketch(sketchFunction), $('canvas'))
   })
 }
-main.on('/tornado%20hole', () => {
+navigo.on('/tornado%20hole', () => {
   document.title = 'tornado hole'
   const props = { lockEdges: true }
   let app = tornadoHole(props)
@@ -91,7 +71,7 @@ main.on('/tornado%20hole', () => {
   }
   window.addEventListener('dblclick', toggleLockEdges)
 })
-main.on('/blob', () => {
+navigo.on('/blob', () => {
   document.title = 'blob'
   let app = blob()
   document.body.appendChild(app.view)
@@ -102,8 +82,8 @@ main.on('/blob', () => {
   }
   window.addEventListener('resize', resize)
 })
-main.on('/github', () => {
+navigo.on('/github', () => {
   window.location.href = 'https://github.com/karlmolina'
 })
-main.resolve()
-export default main
+navigo.resolve()
+export default navigo
