@@ -1,9 +1,10 @@
-import { Application, Graphics, Point } from 'pixi.js'
+import { Application, FederatedPointerEvent, Graphics, Point } from 'pixi.js'
 
 import Dot from './dot.ts'
 
 const DIST_BETWEEN = 40
 class Blob extends Dot {
+  pointerDown = false
   updateForce(nodes: Blob[]) {
     if (this.lock || this.pause) {
       return
@@ -51,7 +52,7 @@ class Blob extends Dot {
   }
 }
 export default () => {
-  let mouseNode: Blob | undefined
+  let mouseNode: Blob | null = null
   const nodes: Blob[] = []
 
   const width = window.innerWidth
@@ -62,9 +63,21 @@ export default () => {
     background: '0xffffff',
     resizeTo: window,
     resolution: 1,
+    /**
+     * by default we use `auto` for backwards compatibility.
+     * However `passive` is more performant and will be used by default in the future,
+     */
+    eventMode: 'passive',
+    eventFeatures: {
+      move: true,
+      /** disables the global move events which can be very expensive in large scenes */
+      globalMove: false,
+      click: true,
+      wheel: true,
+    },
   })
 
-  app.stage.interactive = true
+  app.stage.eventMode = 'static'
   app.stage.hitArea = app.screen
   const numNodes = 100
   const center = new Point(width / 2, height / 2)
@@ -93,30 +106,25 @@ export default () => {
   }
 
   // make it so the children change depending on which is closest
-  const mouse = new Point()
-  app.stage.addEventListener('pointermove', (e) => {
-    mouse.copyFrom(e.global)
-
-    if (mouseNode !== undefined) {
-      mouseNode.obj.position.copyFrom(mouse)
+  const move = (e: FederatedPointerEvent) => {
+    if (mouseNode !== null) {
+      mouseNode.obj.position.copyFrom(e.global)
       mouseNode.pause = true
     }
-  })
-  const click = () => {
-    mouseNode = undefined
+  }
+  app.stage.addEventListener('pointermove', move)
+  // app.stage.addEventListener('touchmove', move)
+  const click = (e: FederatedPointerEvent) => {
+    mouseNode = null
     let minDistance = 1000000000
     for (const node of Object.values(nodes)) {
-      if (node.lock) {
-        continue
-      }
-      node.weight = 1
-      const distance = node.obj.position.subtract(mouse).magnitude()
-      if (distance < minDistance && distance < 30) {
+      const distance = node.obj.position.subtract(e.global).magnitude()
+      if (distance < minDistance && distance < 50) {
         mouseNode = node
         minDistance = distance
       }
     }
-    if (mouseNode === undefined) {
+    if (mouseNode === null) {
       return
     }
     for (const child of mouseNode.children(nodes)) {
@@ -124,13 +132,19 @@ export default () => {
     }
   }
   app.stage.addEventListener('pointerdown', click)
-  app.stage.addEventListener('touchstart', click)
+  // app.stage.addEventListener('touchstart', click)
   const unclick = () => {
+    if (!app.stage) {
+      document.removeEventListener('pointerup', unclick)
+    }
     mouseNode && (mouseNode.pause = false)
-    mouseNode = undefined
+    mouseNode = null
   }
-  app.stage.addEventListener('pointerup', unclick)
-  app.stage.addEventListener('pointerenter', unclick)
+
+  // app.stage.addEventListener('touchend', unclick)
+  // app.stage.addEventListener('touchendoutside', unclick)
+  // app.stage.addEventListener('touchcancel', unclick)
+  document.addEventListener('pointerup', unclick)
   app.ticker.add(() => {
     for (const node of Object.values(nodes)) {
       node.updateForce(nodes)
