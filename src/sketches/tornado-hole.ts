@@ -1,7 +1,7 @@
 import '@pixi/math-extras'
 
 import * as PIXI from 'pixi.js'
-import { Application, Point } from 'pixi.js'
+import { Application, Graphics } from 'pixi.js'
 
 import Dot from './dot.ts'
 
@@ -21,7 +21,7 @@ class Node extends Dot {
   }
 
   updatePhysics() {
-    if (this.pause) {
+    if (this.pause || this.lock) {
       return
     }
     this.a.multiplyScalar(0.06, this.a)
@@ -31,7 +31,7 @@ class Node extends Dot {
   }
 }
 export default () => {
-  let mouseNode: Node
+  const mouseNodes = new Map<number, Node>()
 
   const width = window.innerWidth
   const height = window.innerHeight
@@ -43,21 +43,28 @@ export default () => {
     resolution: 1,
   })
   const spacing = 20
-  const nWide = Math.floor(width / spacing)
-  const nHigh = Math.floor(height / spacing)
+  const nWide = Math.ceil(width / spacing) + 2
+  const nHigh = Math.ceil(height / spacing) + 2
   const nodes: Node[] = []
 
-  const circle = new PIXI.Graphics()
-  circle.beginFill(0x000000)
-  circle.drawCircle(0, 0, 3)
+  const randomColor = Math.random() * 360
   for (let i = 0; i < nHigh; i += 1) {
     for (let j = 0; j < nWide; j += 1) {
-      const obj = app.stage.addChild(new PIXI.Graphics(circle.geometry))
-      obj.position.set(j * spacing + 10, i * spacing + 10)
-      const node = new Node(obj, i * nWide + j)
+      const circle = new PIXI.Graphics()
+      const color = { h: (i + j) * 2 + randomColor, s: 65, l: 65 }
+      circle.beginFill(color)
+      circle.drawCircle(0, 0, 5)
+      let child = new Graphics(circle.geometry)
+      let lock = false
       if (i === 0 || j === 0 || j === nWide - 1 || i === nHigh - 1) {
-        node.lock = true
+        child = new Graphics()
+        lock = true
       }
+      const obj = app.stage.addChild(child)
+      obj.position.set(j * spacing - 10, i * spacing - 10)
+      const node = new Node(obj, i * nWide + j)
+      // it looks cool if you don't lock anything
+      node.lock = lock
       nodes[node.index] = node
       // above
       const above = nodes[(i - 1) * nWide + j]
@@ -74,49 +81,61 @@ export default () => {
   }
   app.stage.interactive = true
   app.stage.hitArea = app.screen
-  const mouse = new Point()
-  let mouseIsPressed = false
   app.stage.addEventListener('pointermove', (e) => {
-    mouse.copyFrom(e.global)
-    if (mouseIsPressed) {
-      mouseNode.obj.position.copyFrom(mouse)
-      mouseNode.pause = true
-      for (const child of mouseNode.children(nodes)) {
-        child.obj.position.copyFrom(mouse)
-        child.pause = true
+    const mouseNode = mouseNodes.get(e.pointerId)
+    if (!mouseNode) {
+      return
+    }
+    mouseNode.obj.position.copyFrom(e.global)
+    for (const child of mouseNode.children(nodes)) {
+      if (child.lock) {
+        continue
       }
+      child.obj.position.copyFrom(e.global)
     }
   })
   app.stage.addEventListener('pointerdown', (event) => {
-    mouseIsPressed = true
+    let mouseNode
     for (const node of Object.values(nodes)) {
       if (node.lock) {
         continue
       }
       node.weight = 1
       if (event.global.subtract(node.obj.position).magnitude() < 20) {
+        mouseNodes.set(event.pointerId, node)
         mouseNode = node
         mouseNode.weight = 1
         break
       }
     }
-    mouseNode.obj.position.copyFrom(mouse)
+    if (!mouseNode) {
+      return
+    }
     mouseNode.pause = true
+    mouseNode.obj.position.copyFrom(event.global)
     for (const child of mouseNode.children(nodes)) {
-      child.obj.position.copyFrom(mouse)
+      if (child.lock) {
+        continue
+      }
+      child.obj.position.copyFrom(event.global)
       child.pause = true
     }
   })
-  app.stage.addEventListener('pointerup', () => {
-    mouseIsPressed = false
+  app.stage.addEventListener('pointerup', (event) => {
+    const mouseNode = mouseNodes.get(event.pointerId)
+    if (!mouseNode) {
+      return
+    }
     mouseNode.weight = 1
     mouseNode.obj.position.copyFrom(mouseNode.averageChildren(nodes))
+    mouseNode.pause = false
+    for (const child of mouseNode.children(nodes)) {
+      child.pause = false
+    }
+    mouseNodes.delete(event.pointerId)
   })
   app.ticker.add(() => {
     for (const node of Object.values(nodes)) {
-      if (!mouseIsPressed) {
-        node.pause = false
-      }
       node.updateAverage(nodes)
     }
     for (const node of Object.values(nodes)) {
