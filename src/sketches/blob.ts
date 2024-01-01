@@ -52,7 +52,7 @@ class Blob extends Dot {
   }
 }
 export default () => {
-  let mouseNode: Blob | null = null
+  const mouseNodes = new Map<number, Blob>()
   const nodes: Blob[] = []
 
   const width = window.innerWidth
@@ -105,26 +105,25 @@ export default () => {
     }
   }
 
-  // make it so the children change depending on which is closest
   const move = (e: FederatedPointerEvent) => {
-    if (mouseNode !== null) {
+    const mouseNode = mouseNodes.get(e.pointerId)
+    if (mouseNode) {
       mouseNode.obj.position.copyFrom(e.global)
       mouseNode.pause = true
     }
   }
   app.stage.addEventListener('pointermove', move)
-  // app.stage.addEventListener('touchmove', move)
   const click = (e: FederatedPointerEvent) => {
-    mouseNode = null
     let minDistance = 1000000000
     for (const node of Object.values(nodes)) {
       const distance = node.obj.position.subtract(e.global).magnitude()
       if (distance < minDistance && distance < 50) {
-        mouseNode = node
+        mouseNodes.set(e.pointerId, node)
         minDistance = distance
       }
     }
-    if (mouseNode === null) {
+    const mouseNode = mouseNodes.get(e.pointerId)
+    if (!mouseNode) {
       return
     }
     for (const child of mouseNode.children(nodes)) {
@@ -132,18 +131,14 @@ export default () => {
     }
   }
   app.stage.addEventListener('pointerdown', click)
-  // app.stage.addEventListener('touchstart', click)
-  const unclick = () => {
+  const unclick = (e: PointerEvent) => {
     if (!app.stage) {
       window.removeEventListener('pointerup', unclick)
     }
+    const mouseNode = mouseNodes.get(e.pointerId)
     mouseNode && (mouseNode.pause = false)
-    mouseNode = null
+    mouseNodes.delete(e.pointerId)
   }
-
-  // app.stage.addEventListener('touchend', unclick)
-  // app.stage.addEventListener('touchendoutside', unclick)
-  // app.stage.addEventListener('touchcancel', unclick)
   window.addEventListener('pointerup', unclick)
   app.ticker.add(() => {
     for (const node of Object.values(nodes)) {
