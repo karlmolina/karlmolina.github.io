@@ -135,7 +135,7 @@ export default () => {
   // app.stage.addEventListener('touchstart', click)
   const unclick = () => {
     if (!app.stage) {
-      document.removeEventListener('pointerup', unclick)
+      window.removeEventListener('pointerup', unclick)
     }
     mouseNode && (mouseNode.pause = false)
     mouseNode = null
@@ -144,7 +144,7 @@ export default () => {
   // app.stage.addEventListener('touchend', unclick)
   // app.stage.addEventListener('touchendoutside', unclick)
   // app.stage.addEventListener('touchcancel', unclick)
-  document.addEventListener('pointerup', unclick)
+  window.addEventListener('pointerup', unclick)
   app.ticker.add(() => {
     for (const node of Object.values(nodes)) {
       node.updateForce(nodes)
