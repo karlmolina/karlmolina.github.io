@@ -30,7 +30,7 @@ class Node extends Dot {
     this.obj.position.add(this.v, this.obj.position)
   }
 }
-export default () => {
+export default (props: { lockEdges: boolean }) => {
   const mouseNodes = new Map<number, Node>()
 
   const width = window.innerWidth
@@ -38,7 +38,7 @@ export default () => {
 
   const app = new Application<HTMLCanvasElement>({
     antialias: true,
-    background: '0xffffff',
+    background: 'black',
     resizeTo: window,
     resolution: 1,
   })
@@ -51,7 +51,7 @@ export default () => {
   for (let i = 0; i < nHigh; i += 1) {
     for (let j = 0; j < nWide; j += 1) {
       const circle = new PIXI.Graphics()
-      const color = { h: (i + j) * 2 + randomColor, s: 65, l: 65 }
+      const color = { h: (i + j) * 2 + randomColor, s: 65, l: 70 }
       circle.beginFill(color)
       circle.drawCircle(0, 0, 5)
       let child = new Graphics(circle.geometry)
@@ -61,10 +61,16 @@ export default () => {
         lock = true
       }
       const obj = app.stage.addChild(child)
-      obj.position.set(j * spacing - 10, i * spacing - 10)
+      if (props.lockEdges) {
+        obj.position.set(j * spacing - 10, i * spacing - 10)
+      } else {
+        obj.position.set(width / 2, height / 2)
+      }
       const node = new Node(obj, i * nWide + j)
       // it looks cool if you don't lock anything
-      node.lock = lock
+      if (props.lockEdges) {
+        node.lock = lock
+      }
       nodes[node.index] = node
       // above
       const above = nodes[(i - 1) * nWide + j]

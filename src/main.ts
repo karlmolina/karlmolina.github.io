@@ -32,6 +32,7 @@ let resize: () => void
 main
   .hooks({
     before: (done) => {
+      document.body.replaceChildren()
       sketch?.remove()
       resize && window.removeEventListener('resize', resize)
       done()
@@ -72,27 +73,36 @@ for (const [name, sketchFunction] of Object.entries(p5Sketches)) {
 }
 main.on('/tornado%20hole', () => {
   document.title = 'tornado hole'
-  let app = tornadoHole()
-  document.body.replaceChildren(app.view)
+  const props = { lockEdges: true }
+  let app = tornadoHole(props)
+  document.body.appendChild(app.view)
   resize = () => {
     app.destroy(true)
-    app = tornadoHole()
-    document.body.replaceChildren(app.view)
+    app = tornadoHole(props)
+    document.body.appendChild(app.view)
   }
   window.addEventListener('resize', resize)
+  const toggleLockEdges = () => {
+    if (!app.stage) {
+      window.removeEventListener('dblclick', toggleLockEdges)
+    }
+    props.lockEdges = !props.lockEdges
+    resize()
+  }
+  window.addEventListener('dblclick', toggleLockEdges)
 })
 main.on('/blob', () => {
   document.title = 'blob'
   let app = blob()
-  document.body.replaceChildren(app.view)
+  document.body.appendChild(app.view)
   resize = () => {
     app.destroy(true)
     app = blob()
-    document.body.replaceChildren(app.view)
+    document.body.appendChild(app.view)
   }
   window.addEventListener('resize', resize)
 })
-main.on('github', () => {
+main.on('/github', () => {
   window.location.href = 'https://github.com/karlmolina'
 })
 main.resolve()
