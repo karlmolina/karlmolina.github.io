@@ -47,8 +47,17 @@ for (const [name, sketchFunction] of Object.entries(p5Sketches)) {
   const encodedName = name.replace(/ /g, '%20')
   navigo.on(`/${encodedName}`, () => {
     document.title = name
-    document.body.replaceChildren(html`<div id="canvas"></div>`)
-    sketch = new p5(sketchUtils.wrapSketch(sketchFunction), $('canvas'))
+    document.body.appendChild(
+      html`<div id="canvas">
+        <style>
+          canvas {
+            width: 100% !important;
+            height: 100% !important;
+          }
+        </style>
+      </div>`,
+    )
+    sketch = new p5(sketchUtils.wrapSketch(sketchFunction), $('#canvas'))
   })
 }
 navigo.on('/tornado%20hole', () => {
