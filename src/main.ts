@@ -13,6 +13,7 @@ import electricBirds, {
   defaultElectricBirdsConfig,
   electricBirdsControls,
 } from './sketches/electric-birds.ts'
+import rain, { defaultRainConfig, rainControls } from './sketches/rain.ts'
 import slinkyMonster from './sketches/slinky-monster.ts'
 import tornadoHole, {
   defaultTornadoHoleConfig,
@@ -29,6 +30,7 @@ const sketchList = [
   'tornado hole',
   'blob',
   'electric birds',
+  'rain',
 ]
 const p5Sketches = {
   connected: connected,
@@ -174,6 +176,25 @@ navigo.on('/electric%20birds', () => {
     current.then((s) => {
       s.destroy()
       current = electricBirds(config, showFps)
+    })
+  }
+  resize = restart
+  window.addEventListener('resize', resize)
+  teardown = () => {
+    menu.element.remove()
+    current.then((s) => s.destroy())
+  }
+})
+navigo.on('/rain', () => {
+  document.title = 'rain'
+  const config = defaultRainConfig()
+  const menu = configMenu('rain-config', rainControls, config, () => restart())
+  const showFps = (fps: number) => menu.setStatus(`${fps} fps`)
+  let current = rain(config, showFps)
+  const restart = () => {
+    current.then((s) => {
+      s.destroy()
+      current = rain(config, showFps)
     })
   }
   resize = restart
