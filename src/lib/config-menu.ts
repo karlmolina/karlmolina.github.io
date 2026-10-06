@@ -24,17 +24,25 @@ const save = (storageKey: string, values: unknown) => {
   }
 }
 
-// Values shared through the url live in the hash query (`#/rain?dots=100`),
-// since routing is hash based.
-const loadFromUrl = (): Record<string, string> => {
-  const query = window.location.hash.split('?')[1] ?? ''
-  return Object.fromEntries(new URLSearchParams(query))
-}
-const saveToUrl = (values: Record<string, number | boolean>) => {
+// Values shared through the url live in the hash query (`#/rain?a=100&b=1`),
+// since routing is hash based. Each control is named by a single character
+// from its position in the controls list, so reordering controls changes what
+// old links mean.
+const urlKey = (index: number) => index.toString(36)
+const loadFromUrl = (): URLSearchParams =>
+  new URLSearchParams(window.location.hash.split('?')[1] ?? '')
+const saveToUrl = (
+  controls: { key: string }[],
+  values: Record<string, number | boolean>,
+) => {
   const params = new URLSearchParams()
-  for (const [key, value] of Object.entries(values)) {
-    params.set(key, String(value))
-  }
+  controls.forEach(({ key }, i) => {
+    const value = values[key]
+    params.set(
+      urlKey(i),
+      typeof value === 'boolean' ? (value ? '1' : '0') : String(value),
+    )
+  })
   const path = window.location.hash.split('?')[0]
   window.history.replaceState(null, '', `${path}?${params}`)
 }
@@ -57,23 +65,22 @@ export default <T extends object>(
   }
   // values in the url win over locally saved ones so shared links look the same
   const shared = loadFromUrl()
-  for (const control of controls) {
-    const raw = shared[control.key]
-    if (raw === undefined) continue
+  controls.forEach((control, i) => {
+    const raw = shared.get(urlKey(i))
+    if (raw === null) return
     if (control.type === 'checkbox') {
-      if (raw === 'true' || raw === 'false')
-        values[control.key] = raw === 'true'
+      if (raw === '1' || raw === '0') values[control.key] = raw === '1'
     } else if (raw.trim() !== '' && Number.isFinite(Number(raw))) {
       values[control.key] = Math.min(
         control.max,
         Math.max(control.min, Number(raw)),
       )
     }
-  }
+  })
   let collapsed = saved.collapsed !== false
   const persist = () => {
     save(storageKey, { ...values, collapsed })
-    saveToUrl(values)
+    saveToUrl(controls, values)
   }
 
   const element = document.body.appendChild(document.createElement('div'))
@@ -84,7 +91,7 @@ export default <T extends object>(
   element.addEventListener('dblclick', (e) => e.stopPropagation())
   const toggle = element.appendChild(document.createElement('div'))
   toggle.style.cssText =
-    'cursor:pointer;user-select:none;text-align:right;font-size:14px'
+    'cursor:pointer;user-select:none;text-align:right;font-size:14px;width:fit-content;margin-left:auto;padding:4px 8px;background:rgba(0,0,0,0.6);border-radius:4px'
   const panel = element.appendChild(document.createElement('div'))
   panel.style.cssText =
     'margin-top:6px;padding:8px 10px;background:rgba(0,0,0,0.6);border-radius:4px'
