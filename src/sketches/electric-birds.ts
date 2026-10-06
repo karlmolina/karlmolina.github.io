@@ -196,10 +196,7 @@ export const electricBirdsControls: Control<ElectricBirdsConfig>[] = [
   },
 ]
 
-export default async (
-  config: ElectricBirdsConfig,
-  onFps: (fps: number) => void,
-) => {
+export default async (config: ElectricBirdsConfig) => {
   const parent = document.body
   if (!('gpu' in navigator)) {
     parent.textContent = 'WebGPU not supported in this browser'
@@ -431,10 +428,7 @@ export default async (
   sprite.frustumCulled = false
   scene.add(sprite)
 
-  let frames = 0
-  let fpsStart = performance.now()
-
-  let last = fpsStart
+  let last = performance.now()
   renderer.setAnimationLoop(() => {
     activeCount.value = config.dots
     sprite.count = config.dots
@@ -454,12 +448,6 @@ export default async (
     const now = performance.now()
     dt.value = Math.min((now - last) / 1000, 0.05)
     last = now
-    frames += 1
-    if (now - fpsStart >= 500) {
-      onFps(Math.round((frames * 1000) / (now - fpsStart)))
-      frames = 0
-      fpsStart = now
-    }
     for (const pass of [steer, move]) {
       renderer.compute(pass)
     }

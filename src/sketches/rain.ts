@@ -203,7 +203,7 @@ export const rainControls: Control<RainConfig>[] = [
   },
 ]
 
-export default async (config: RainConfig, onFps: (fps: number) => void) => {
+export default async (config: RainConfig) => {
   const parent = document.body
   if (!('gpu' in navigator)) {
     parent.textContent = 'WebGPU not supported in this browser'
@@ -449,9 +449,7 @@ export default async (config: RainConfig, onFps: (fps: number) => void) => {
 
   renderer.compute(initHeights)
 
-  let frames = 0
-  let fpsStart = performance.now()
-  let last = fpsStart
+  let last = performance.now()
   renderer.setAnimationLoop(() => {
     const now = performance.now()
     const delta = Math.min((now - last) / 1000, 0.05)
@@ -469,12 +467,6 @@ export default async (config: RainConfig, onFps: (fps: number) => void) => {
       config.trail > 0 ? Math.exp(-(delta * 4) / config.trail) : 0
     terrainBrightness.value = config.terrain
     dropColor.value.setHSL(config.hue / 360, config.saturation, 0.6)
-    frames += 1
-    if (now - fpsStart >= 500) {
-      onFps(Math.round((frames * 1000) / (now - fpsStart)))
-      frames = 0
-      fpsStart = now
-    }
     renderer.compute(update)
     renderer.compute(fade)
     renderer.render(scene, camera)

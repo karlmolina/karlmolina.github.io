@@ -66,9 +66,25 @@ export default <T extends object>(
   })
   showCollapsed()
 
-  // optional read-only line at the top of the panel (e.g. an fps counter)
+  // fps counter at the top of the panel; measured from animation frames so it
+  // works for every sketch. The loop stops once the menu is removed.
   const status = panel.appendChild(document.createElement('div'))
-  status.style.cssText = 'display:none;margin-bottom:4px'
+  status.style.cssText = 'margin-bottom:4px'
+  let frames = 0
+  let fpsStart = performance.now()
+  const tick = (now: number) => {
+    if (!element.isConnected) return
+    frames += 1
+    if (now - fpsStart >= 500) {
+      status.textContent = `${Math.round(
+        (frames * 1000) / (now - fpsStart),
+      )} fps`
+      frames = 0
+      fpsStart = now
+    }
+    requestAnimationFrame(tick)
+  }
+  requestAnimationFrame(tick)
 
   const syncers: (() => void)[] = []
   for (const control of controls) {
@@ -132,10 +148,6 @@ export default <T extends object>(
   sync()
   return {
     element,
-    setStatus: (text: string) => {
-      status.textContent = text
-      status.style.display = text ? 'block' : 'none'
-    },
     // call after changing config from outside the panel
     sync: () => {
       sync()

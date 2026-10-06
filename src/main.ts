@@ -170,12 +170,11 @@ navigo.on('/electric%20birds', () => {
     config,
     () => restart(),
   )
-  const showFps = (fps: number) => menu.setStatus(`${fps} fps`)
-  let current = electricBirds(config, showFps)
+  let current = electricBirds(config)
   const restart = () => {
     current.then((s) => {
       s.destroy()
-      current = electricBirds(config, showFps)
+      current = electricBirds(config)
     })
   }
   resize = restart
@@ -189,12 +188,11 @@ navigo.on('/rain', () => {
   document.title = 'rain'
   const config = defaultRainConfig()
   const menu = configMenu('rain-config', rainControls, config, () => restart())
-  const showFps = (fps: number) => menu.setStatus(`${fps} fps`)
-  let current = rain(config, showFps)
+  let current = rain(config)
   const restart = () => {
     current.then((s) => {
       s.destroy()
-      current = rain(config, showFps)
+      current = rain(config)
     })
   }
   resize = restart
