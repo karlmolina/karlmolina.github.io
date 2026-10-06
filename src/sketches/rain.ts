@@ -97,7 +97,7 @@ export const rainControls: Control<RainConfig>[] = [
     type: 'range',
     key: 'dotSize',
     label: 'drop size',
-    min: 1,
+    min: 0,
     max: 8,
     step: 0.5,
     help: 'Size of each drop in pixels.',
