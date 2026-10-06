@@ -9,7 +9,10 @@ import { $ } from './lib/html-utils.ts'
 import home from './pages/home.ts'
 import blob from './sketches/blob.ts'
 import connected from './sketches/connected.ts'
-import electricBirds from './sketches/electric-birds.ts'
+import electricBirds, {
+  defaultElectricBirdsConfig,
+  electricBirdsControls,
+} from './sketches/electric-birds.ts'
 import slinkyMonster from './sketches/slinky-monster.ts'
 import tornadoHole, {
   defaultTornadoHoleConfig,
@@ -72,7 +75,6 @@ navigo.on('/tornado%20hole', () => {
   document.title = 'tornado hole'
   const config = defaultTornadoHoleConfig()
   const menu = configMenu(
-    'tornado hole',
     'tornado-hole-config',
     [
       {
@@ -152,15 +154,27 @@ navigo.on('/blob', () => {
 })
 navigo.on('/electric%20birds', () => {
   document.title = 'electric birds'
-  const container = document.body.appendChild(document.createElement('div'))
-  let current = electricBirds(container)
-  resize = () => {
+  const config = defaultElectricBirdsConfig()
+  const menu = configMenu(
+    'electric-birds-config',
+    electricBirdsControls,
+    config,
+    () => restart(),
+  )
+  const showFps = (fps: number) => menu.setStatus(`${fps} fps`)
+  let current = electricBirds(config, showFps)
+  const restart = () => {
     current.then((s) => {
       s.destroy()
-      current = electricBirds(container)
+      current = electricBirds(config, showFps)
     })
   }
+  resize = restart
   window.addEventListener('resize', resize)
+  teardown = () => {
+    menu.element.remove()
+    current.then((s) => s.destroy())
+  }
 })
 navigo.on('/github', () => {
   window.location.href = 'https://github.com/karlmolina'

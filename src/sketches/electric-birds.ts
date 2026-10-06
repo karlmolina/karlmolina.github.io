@@ -21,6 +21,8 @@ import {
   vec3,
 } from 'three/tsl'
 
+import type { Control } from '../lib/config-menu.ts'
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LoopParams = { i: any }
 
@@ -52,23 +54,153 @@ const LINE_OPACITY = 0.25
 const LINE_WIDTH = 1
 const PARTICLE_SIZE = 3
 
-const STORAGE_KEY = 'electric-birds-config'
-const loadConfig = (): Record<string, number> => {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
-  } catch {
-    return {}
-  }
-}
-const saveConfig = (config: Record<string, number>) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
-  } catch {
-    // storage unavailable (private mode, quota); settings just won't persist
-  }
+export interface ElectricBirdsConfig {
+  dots: number
+  dotSize: number
+  links: number
+  lineOpacity: number
+  lineWidth: number
+  maxSpeed: number
+  // full width of the vision cone, in degrees
+  cone: number
+  visionRadius: number
+  cohesion: number
+  alignment: number
+  separation: number
+  maxAccel: number
 }
 
-export default async (parent: HTMLElement) => {
+export const defaultElectricBirdsConfig = (): ElectricBirdsConfig => ({
+  dots: COUNT,
+  dotSize: PARTICLE_SIZE,
+  links: LINKS,
+  lineOpacity: LINE_OPACITY,
+  lineWidth: LINE_WIDTH,
+  maxSpeed: MAX_SPEED,
+  cone: Math.round((FOV * 180) / Math.PI),
+  visionRadius: VISION_RADIUS,
+  cohesion: COHESION,
+  alignment: ALIGNMENT,
+  separation: SEPARATION,
+  maxAccel: MAX_ACCEL,
+})
+
+export const electricBirdsControls: Control<ElectricBirdsConfig>[] = [
+  {
+    type: 'range',
+    key: 'dots',
+    label: 'dots',
+    min: 500,
+    max: MAX_COUNT,
+    step: 500,
+    help: 'How many dots are on screen. More dots cost much more GPU time.',
+  },
+  {
+    type: 'range',
+    key: 'dotSize',
+    label: 'dot size',
+    min: 1,
+    max: 8,
+    step: 0.5,
+    help: 'Size of each dot in pixels.',
+  },
+  {
+    type: 'range',
+    key: 'links',
+    label: 'lines per dot',
+    min: 0,
+    max: MAX_LINKS,
+    step: 1,
+    help: 'How many of its nearest visible neighbors each dot draws a line to.',
+  },
+  {
+    type: 'range',
+    key: 'lineOpacity',
+    label: 'line opacity',
+    min: 0,
+    max: 1,
+    step: 0.05,
+    help: "How visible the lines to each dot's nearest neighbors are. 0 hides them.",
+  },
+  {
+    type: 'range',
+    key: 'lineWidth',
+    label: 'line width',
+    min: 0.5,
+    max: 4,
+    step: 0.5,
+    help: 'Thickness of the neighbor lines in pixels.',
+  },
+  {
+    type: 'range',
+    key: 'maxSpeed',
+    label: 'max speed',
+    min: 20,
+    max: 600,
+    step: 10,
+    help: 'Speed limit for every dot, in pixels per second.',
+  },
+  {
+    type: 'range',
+    key: 'cone',
+    label: 'cone (deg)',
+    min: 10,
+    max: 360,
+    step: 5,
+    help: 'How wide a dot can see in front of it. 360 means it sees all around; small values make it follow only what is straight ahead.',
+  },
+  {
+    type: 'range',
+    key: 'visionRadius',
+    label: 'vision radius',
+    min: 4,
+    max: MAX_VISION_RADIUS,
+    step: 1,
+    help: 'How far a dot can see, in pixels.',
+  },
+  {
+    type: 'range',
+    key: 'cohesion',
+    label: 'cohesion',
+    min: 0,
+    max: 4,
+    step: 0.1,
+    help: 'How strongly a dot steers toward the middle of the dots it sees.',
+  },
+  {
+    type: 'range',
+    key: 'alignment',
+    label: 'alignment',
+    min: 0,
+    max: 4,
+    step: 0.1,
+    help: 'How strongly a dot matches the heading of the dots it sees. High values make groups move together.',
+  },
+  {
+    type: 'range',
+    key: 'separation',
+    label: 'separation',
+    min: 0,
+    max: 4,
+    step: 0.1,
+    help: 'How strongly a dot pushes away from dots that are too close.',
+  },
+  {
+    type: 'range',
+    key: 'maxAccel',
+    label: 'max accel',
+    min: 0,
+    max: 1000,
+    step: 10,
+    help: 'Top turning/speeding-up force, in pixels per second squared. Low values make dots steer slowly and swing wide.',
+  },
+]
+
+export default async (
+  config: ElectricBirdsConfig,
+  onFps: (fps: number) => void,
+) => {
+  const parent = document.body
   if (!('gpu' in navigator)) {
     parent.textContent = 'WebGPU not supported in this browser'
     return { destroy: () => parent.replaceChildren() }
@@ -299,174 +431,32 @@ export default async (parent: HTMLElement) => {
   sprite.frustumCulled = false
   scene.add(sprite)
 
-  const fpsEl = document.createElement('div')
-  fpsEl.style.cssText =
-    'position:fixed;top:8px;right:12px;color:#fff;font:14px monospace;pointer-events:none'
-  parent.appendChild(fpsEl)
-  const panel = document.createElement('div')
-  panel.style.cssText =
-    'position:fixed;top:32px;right:12px;width:190px;padding:8px 10px;background:rgba(0,0,0,0.6);color:#fff;font:12px monospace;border-radius:4px'
-  const saved = loadConfig()
-  const toggle = document.createElement('div')
-  toggle.style.cssText =
-    'cursor:pointer;user-select:none;display:flex;justify-content:space-between'
-  const body = document.createElement('div')
-  const setCollapsed = (collapsed: boolean) => {
-    body.style.display = collapsed ? 'none' : 'block'
-    toggle.textContent = collapsed ? 'settings +' : 'settings -'
-    saved.collapsed = collapsed ? 1 : 0
-    saveConfig(saved)
-  }
-  toggle.addEventListener('click', () =>
-    setCollapsed(body.style.display !== 'none'),
-  )
-  panel.append(toggle, body)
-  const help: Record<string, string> = {
-    count: 'How many dots are on screen. More dots cost much more GPU time.',
-    maxSpeed: 'Speed limit for every dot, in pixels per second.',
-    cone: 'How wide a dot can see in front of it. 360 means it sees all around; small values make it follow only what is straight ahead.',
-    radius: 'How far a dot can see, in pixels.',
-    cohesion:
-      'How strongly a dot steers toward the middle of the dots it sees.',
-    alignment:
-      'How strongly a dot matches the heading of the dots it sees. High values make groups move together.',
-    separation: 'How strongly a dot pushes away from dots that are too close.',
-    maxAccel:
-      'Top turning/speeding-up force, in pixels per second squared. Low values make dots steer slowly and swing wide.',
-    lineOpacity:
-      "How visible the lines to each dot's nearest neighbors are. 0 hides them.",
-    lineWidth: 'Thickness of the neighbor lines in pixels.',
-    size: 'Size of each dot in pixels.',
-  }
-  const slider = (
-    key: string,
-    label: string,
-    min: number,
-    max: number,
-    step: number,
-    initial: number,
-    onChange: (value: number) => void,
-  ) => {
-    const row = document.createElement('div')
-    row.style.cssText = 'margin:4px 0'
-    const header = document.createElement('div')
-    header.style.cssText = 'display:flex;align-items:center;gap:6px'
-    const text = document.createElement('span')
-    const info = document.createElement('span')
-    info.textContent = 'i'
-    info.title = help[key] ?? ''
-    info.style.cssText =
-      'cursor:pointer;width:14px;height:14px;line-height:14px;text-align:center;border:1px solid #fff;border-radius:50%;font-size:10px;font-style:italic'
-    const description = document.createElement('div')
-    description.textContent = help[key] ?? ''
-    description.style.cssText = 'display:none;margin:2px 0;color:#bbb'
-    info.addEventListener('click', () => {
-      description.style.display =
-        description.style.display === 'none' ? 'block' : 'none'
-    })
-    header.append(info, text)
-    const input = document.createElement('input')
-    input.type = 'range'
-    input.min = String(min)
-    input.max = String(max)
-    input.step = String(step)
-    input.value = String(saved[key] ?? initial)
-    input.style.cssText = 'width:100%'
-    const update = () => {
-      text.textContent = `${label}: ${input.value}`
-      onChange(Number(input.value))
-      saved[key] = Number(input.value)
-      saveConfig(saved)
-    }
-    input.addEventListener('input', update)
-    update()
-    row.append(header, description, input)
-    body.appendChild(row)
-  }
-  slider('count', 'dots', 500, MAX_COUNT, 500, COUNT, (v) => {
-    activeCount.value = v
-    sprite.count = v
-    lines.count = v * MAX_LINKS
-  })
-  slider('size', 'dot size', 1, 8, 0.5, PARTICLE_SIZE, (v) => {
-    dotSize.value = v
-  })
-  slider('links', 'lines per dot', 0, MAX_LINKS, 1, LINKS, (v) => {
-    linkCount.value = v
-  })
-  slider('lineOpacity', 'line opacity', 0, 1, 0.05, LINE_OPACITY, (v) => {
-    lineOpacity.value = v
-    lines.visible = v > 0
-  })
-  slider('lineWidth', 'line width', 0.5, 4, 0.5, LINE_WIDTH, (v) => {
-    lineWidth.value = v
-  })
-  slider('maxSpeed', 'max speed', 20, 600, 10, MAX_SPEED, (v) => {
-    maxSpeed.value = v
-  })
-  slider(
-    'cone',
-    'cone (deg)',
-    10,
-    360,
-    5,
-    Math.round((FOV * 180) / Math.PI),
-    (v) => {
-      cosHalfFov.value = Math.cos((v * Math.PI) / 360)
-    },
-  )
-  slider(
-    'radius',
-    'vision radius',
-    4,
-    MAX_VISION_RADIUS,
-    1,
-    VISION_RADIUS,
-    (v) => {
-      visionRadius.value = v
-    },
-  )
-  slider(
-    'cohesion',
-    'cohesion',
-    0,
-    4,
-    0.1,
-    COHESION,
-    (v) => (cohesion.value = v),
-  )
-  slider(
-    'alignment',
-    'alignment',
-    0,
-    4,
-    0.1,
-    ALIGNMENT,
-    (v) => (alignment.value = v),
-  )
-  slider('separation', 'separation', 0, 4, 0.1, SEPARATION, (v) => {
-    separation.value = v
-  })
-  slider('maxAccel', 'max accel', 0, 1000, 10, MAX_ACCEL, (v) => {
-    maxAccel.value = v
-  })
-  setCollapsed(saved.collapsed === 1)
-  // keep clicks and drags on the panel from reaching the page
-  panel.addEventListener('pointerdown', (e) => e.stopPropagation())
-  parent.appendChild(panel)
   let frames = 0
   let fpsStart = performance.now()
 
   let last = fpsStart
   renderer.setAnimationLoop(() => {
+    activeCount.value = config.dots
+    sprite.count = config.dots
+    lines.count = config.dots * MAX_LINKS
+    dotSize.value = config.dotSize
+    linkCount.value = config.links
+    lineOpacity.value = config.lineOpacity
+    lines.visible = config.lineOpacity > 0
+    lineWidth.value = config.lineWidth
+    maxSpeed.value = config.maxSpeed
+    cosHalfFov.value = Math.cos((config.cone * Math.PI) / 360)
+    visionRadius.value = config.visionRadius
+    cohesion.value = config.cohesion
+    alignment.value = config.alignment
+    separation.value = config.separation
+    maxAccel.value = config.maxAccel
     const now = performance.now()
     dt.value = Math.min((now - last) / 1000, 0.05)
     last = now
     frames += 1
     if (now - fpsStart >= 500) {
-      fpsEl.textContent = `${Math.round(
-        (frames * 1000) / (now - fpsStart),
-      )} fps`
+      onFps(Math.round((frames * 1000) / (now - fpsStart)))
       frames = 0
       fpsStart = now
     }
@@ -481,8 +471,6 @@ export default async (parent: HTMLElement) => {
       renderer.setAnimationLoop(null)
       renderer.dispose()
       renderer.domElement.remove()
-      fpsEl.remove()
-      panel.remove()
     },
   }
 }
