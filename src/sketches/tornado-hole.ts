@@ -5,6 +5,7 @@ import {
   If,
   instancedArray,
   instanceIndex,
+  mix,
   smoothstep,
   storage,
   uniform,
@@ -30,6 +31,9 @@ const MAX_POINTERS = 4
 // the simulation was tuned per frame at 60hz, so step at a fixed rate
 const STEP = 1 / 60
 const MAX_STEPS_PER_FRAME = 4
+// two presses near each other within this long pin (or unpin) it
+const DOUBLE_PRESS_MS = 400
+const DOUBLE_PRESS_RADIUS = 40
 
 export interface TornadoHoleConfig {
   // which screen edges are pinned in place (rebuilds the grid)
@@ -117,6 +121,9 @@ export default async (config: TornadoHoleConfig) => {
   const positionBuffer = storage(positionAttribute, 'vec2', count)
   const velocityBuffer = instancedArray(count, 'vec2')
   const colorBuffer = instancedArray(colors, 'vec4')
+  // 1 for dots the user pinned in place with a double press
+  const pinnedBuffer = instancedArray(count, 'float')
+  const pinTarget = uniform(-1)
 
   // each active pointer holds a dot and its direct neighbors at the pointer
   const slots = Array.from({ length: MAX_POINTERS }, () => ({
@@ -143,35 +150,52 @@ export default async (config: TornadoHoleConfig) => {
     const held = vec3(0, 0, 0).toVar()
     for (const slot of slots) {
       const distance = abs(row.sub(slot.cell.x)).add(abs(col.sub(slot.cell.y)))
-      If(slot.cell.z.greaterThan(0).and(distance.lessThanEqual(1)), () => {
-        held.assign(vec3(slot.position, 1))
-      })
+      // a pinned dot only moves when it is the one being dragged
+      const pin = pinnedBuffer.element(row.mul(nWide).add(col).toInt())
+      const canMove = distance.lessThan(0.5).or(pin.lessThan(0.5))
+      If(
+        slot.cell.z.greaterThan(0).and(distance.lessThanEqual(1)).and(canMove),
+        () => {
+          held.assign(vec3(slot.position, 1))
+        },
+      )
     }
     return held
   }
+
+  const togglePin = Fn(() => {
+    const pin = pinnedBuffer.element(instanceIndex)
+    If(float(instanceIndex).equal(pinTarget), () => {
+      pin.assign(float(1).sub(pin))
+    })
+  })().compute(count)
 
   // pull each dot toward its up/down/left/right neighbors
   const accelerate = Fn(() => {
     const index = instanceIndex.toInt()
     const { row, col } = rowCol(float(instanceIndex))
-    If(isUnlocked(row, col).and(heldBy(row, col).z.lessThan(0.5)), () => {
-      const pos = positionBuffer.element(index)
-      const pull = vec2(0, 0).toVar()
-      If(row.greaterThan(0), () => {
-        pull.addAssign(positionBuffer.element(index.sub(nWide)).sub(pos))
-      })
-      If(row.lessThan(nHigh - 1), () => {
-        pull.addAssign(positionBuffer.element(index.add(nWide)).sub(pos))
-      })
-      If(col.greaterThan(0), () => {
-        pull.addAssign(positionBuffer.element(index.sub(1)).sub(pos))
-      })
-      If(col.lessThan(nWide - 1), () => {
-        pull.addAssign(positionBuffer.element(index.add(1)).sub(pos))
-      })
-      const vel = velocityBuffer.element(index)
-      vel.addAssign(pull.mul(spring))
-    })
+    const free = pinnedBuffer.element(index).lessThan(0.5)
+    If(
+      isUnlocked(row, col).and(free).and(heldBy(row, col).z.lessThan(0.5)),
+      () => {
+        const pos = positionBuffer.element(index)
+        const pull = vec2(0, 0).toVar()
+        If(row.greaterThan(0), () => {
+          pull.addAssign(positionBuffer.element(index.sub(nWide)).sub(pos))
+        })
+        If(row.lessThan(nHigh - 1), () => {
+          pull.addAssign(positionBuffer.element(index.add(nWide)).sub(pos))
+        })
+        If(col.greaterThan(0), () => {
+          pull.addAssign(positionBuffer.element(index.sub(1)).sub(pos))
+        })
+        If(col.lessThan(nWide - 1), () => {
+          pull.addAssign(positionBuffer.element(index.add(1)).sub(pos))
+        })
+        const vel = velocityBuffer.element(index)
+        vel.addAssign(pull.mul(spring))
+      },
+    )
   })().compute(count)
 
   const move = Fn(() => {
@@ -183,10 +207,14 @@ export default async (config: TornadoHoleConfig) => {
       const held = heldBy(row, col)
       If(held.z.greaterThan(0.5), () => {
         pos.assign(held.xy)
-      }).Else(() => {
-        vel.mulAssign(damping)
-        pos.addAssign(vel)
       })
+        .ElseIf(pinnedBuffer.element(index).greaterThan(0.5), () => {
+          vel.assign(vec2(0, 0))
+        })
+        .Else(() => {
+          vel.mulAssign(damping)
+          pos.addAssign(vel)
+        })
     })
   })().compute(count)
 
@@ -203,7 +231,8 @@ export default async (config: TornadoHoleConfig) => {
   // the sprite's own scale would also multiply positionNode, so size via scaleNode
   material.scaleNode = dotSize
   const dotColor = colorBuffer.toAttribute()
-  material.colorNode = vec4(dotColor.rgb, 1)
+  const isPinned = pinnedBuffer.toAttribute()
+  material.colorNode = vec4(mix(dotColor.rgb, vec3(1, 1, 1), isPinned), 1)
   const edge = uv().sub(0.5).length()
   material.opacityNode = float(1)
     .sub(smoothstep(0.4, 0.5, edge))
@@ -226,6 +255,7 @@ export default async (config: TornadoHoleConfig) => {
 
   // pointerId -> slot index; undefined while the grab lookup is in flight
   const held = new Map<number, number | undefined>()
+  let lastPress = { dot: -1, time: -Infinity, x: 0, y: 0 }
   const toLocal = (e: PointerEvent) => {
     const rect = canvas.getBoundingClientRect()
     return { x: e.clientX - rect.left, y: e.clientY - rect.top }
@@ -236,12 +266,21 @@ export default async (config: TornadoHoleConfig) => {
       return
     }
     held.set(e.pointerId, undefined)
+    const pressTime = e.timeStamp
     const { x, y } = toLocal(e)
-    const buffer = await renderer.getArrayBufferAsync(positionAttribute)
-    const current = new Float32Array(buffer)
+    // the dot usually slides away from the first press, so a quick second
+    // press near the same spot targets the dot that press held
+    const isDouble =
+      lastPress.dot !== -1 &&
+      pressTime - lastPress.time < DOUBLE_PRESS_MS &&
+      Math.hypot(x - lastPress.x, y - lastPress.y) < DOUBLE_PRESS_RADIUS
+    const buffer = isDouble
+      ? undefined
+      : await renderer.getArrayBufferAsync(positionAttribute)
+    const current = new Float32Array(buffer ?? new ArrayBuffer(0))
     let nearest = GRAB_RADIUS * GRAB_RADIUS
-    let grabbed = -1
-    for (let n = 0; n < count; n += 1) {
+    let grabbed = isDouble ? lastPress.dot : -1
+    for (let n = 0; n < count && !isDouble; n += 1) {
       const i = Math.floor(n / nWide)
       const j = n % nWide
       if (isLockedCell(i, j)) {
@@ -265,6 +304,13 @@ export default async (config: TornadoHoleConfig) => {
     const slotIndex = slots.findIndex((_, s) => !used.has(s))
     const slot = slots[slotIndex]
     held.set(e.pointerId, slotIndex)
+    if (isDouble) {
+      pinTarget.value = grabbed
+      renderer.compute(togglePin)
+      lastPress = { dot: -1, time: -Infinity, x: 0, y: 0 }
+    } else {
+      lastPress = { dot: grabbed, time: pressTime, x, y }
+    }
     slot.position.value.set(x, y)
     slot.cell.value.set(Math.floor(grabbed / nWide), grabbed % nWide, 1)
   }
