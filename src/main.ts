@@ -79,10 +79,18 @@ navigo.on('/tornado%20hole', () => {
   const menu = configMenu(
     'tornado-hole-config',
     [
+      { type: 'checkbox', key: 'lockTop', label: 'lock top', rebuild: true },
       {
         type: 'checkbox',
-        key: 'lockEdges',
-        label: 'lock edges',
+        key: 'lockBottom',
+        label: 'lock bottom',
+        rebuild: true,
+      },
+      { type: 'checkbox', key: 'lockLeft', label: 'lock left', rebuild: true },
+      {
+        type: 'checkbox',
+        key: 'lockRight',
+        label: 'lock right',
         rebuild: true,
       },
       {
@@ -130,15 +138,8 @@ navigo.on('/tornado%20hole', () => {
     })
   }
   resize = restart
-  const toggleLockEdges = () => {
-    config.lockEdges = !config.lockEdges
-    menu.sync()
-    restart()
-  }
   window.addEventListener('resize', resize)
-  window.addEventListener('dblclick', toggleLockEdges)
   teardown = () => {
-    window.removeEventListener('dblclick', toggleLockEdges)
     menu.element.remove()
     current.then((s) => s.destroy())
   }

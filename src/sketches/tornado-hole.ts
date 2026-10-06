@@ -32,7 +32,11 @@ const STEP = 1 / 60
 const MAX_STEPS_PER_FRAME = 4
 
 export interface TornadoHoleConfig {
-  lockEdges: boolean
+  // which screen edges are pinned in place (rebuilds the grid)
+  lockTop: boolean
+  lockBottom: boolean
+  lockLeft: boolean
+  lockRight: boolean
   // approximate number of dots on screen (rebuilds the grid)
   dots: number
   dotSize: number
@@ -43,7 +47,10 @@ export interface TornadoHoleConfig {
 }
 
 export const defaultTornadoHoleConfig = (): TornadoHoleConfig => ({
-  lockEdges: true,
+  lockTop: true,
+  lockBottom: true,
+  lockLeft: true,
+  lockRight: true,
   dots: 5000,
   dotSize: 10,
   spring: 0.1,
@@ -56,7 +63,8 @@ export default async (config: TornadoHoleConfig) => {
     parent.textContent = 'WebGPU not supported in this browser'
     return { destroy: () => parent.replaceChildren() }
   }
-  const { lockEdges } = config
+  const { lockTop, lockBottom, lockLeft, lockRight } = config
+  const anyLocked = lockTop || lockBottom || lockLeft || lockRight
   const width = window.innerWidth
   const height = window.innerHeight
 
@@ -75,6 +83,11 @@ export default async (config: TornadoHoleConfig) => {
   const nWide = Math.ceil(width / spacing) + 2
   const nHigh = Math.ceil(height / spacing) + 2
   const count = nWide * nHigh
+  const isLockedCell = (i: number, j: number) =>
+    (lockTop && i === 0) ||
+    (lockBottom && i === nHigh - 1) ||
+    (lockLeft && j === 0) ||
+    (lockRight && j === nWide - 1)
 
   // positions are in screen pixels (y down); the vertex shader flips them
   const positions = new Float32Array(count * 2)
@@ -85,9 +98,8 @@ export default async (config: TornadoHoleConfig) => {
   for (let i = 0; i < nHigh; i += 1) {
     for (let j = 0; j < nWide; j += 1) {
       const n = i * nWide + j
-      const locked =
-        lockEdges && (i === 0 || j === 0 || i === nHigh - 1 || j === nWide - 1)
-      if (lockEdges) {
+      const locked = isLockedCell(i, j)
+      if (anyLocked) {
         positions[n * 2] = j * spacing - spacing / 2
         positions[n * 2 + 1] = i * spacing - spacing / 2
       } else {
@@ -117,14 +129,14 @@ export default async (config: TornadoHoleConfig) => {
     const row = index.div(nWide).floor().toVar()
     return { row, col: index.sub(row.mul(nWide)).toVar() }
   }
-  const isUnlocked = (row: Node<'float'>, col: Node<'float'>) =>
-    lockEdges
-      ? row
-          .greaterThan(0)
-          .and(col.greaterThan(0))
-          .and(row.lessThan(nHigh - 1))
-          .and(col.lessThan(nWide - 1))
-      : float(1).greaterThan(0)
+  const isUnlocked = (row: Node<'float'>, col: Node<'float'>) => {
+    let unlocked = float(1).greaterThan(0)
+    if (lockTop) unlocked = unlocked.and(row.greaterThan(0))
+    if (lockBottom) unlocked = unlocked.and(row.lessThan(nHigh - 1))
+    if (lockLeft) unlocked = unlocked.and(col.greaterThan(0))
+    if (lockRight) unlocked = unlocked.and(col.lessThan(nWide - 1))
+    return unlocked
+  }
 
   // x, y = where a held dot should be, z = 1 if this dot is held
   const heldBy = (row: Node<'float'>, col: Node<'float'>) => {
@@ -232,10 +244,7 @@ export default async (config: TornadoHoleConfig) => {
     for (let n = 0; n < count; n += 1) {
       const i = Math.floor(n / nWide)
       const j = n % nWide
-      if (
-        lockEdges &&
-        (i === 0 || j === 0 || i === nHigh - 1 || j === nWide - 1)
-      ) {
+      if (isLockedCell(i, j)) {
         continue
       }
       const d2 = (current[n * 2] - x) ** 2 + (current[n * 2 + 1] - y) ** 2
