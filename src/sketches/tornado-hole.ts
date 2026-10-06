@@ -1,152 +1,316 @@
-import '@pixi/math-extras'
+import {
+  abs,
+  float,
+  Fn,
+  If,
+  instancedArray,
+  instanceIndex,
+  smoothstep,
+  storage,
+  uniform,
+  uv,
+  vec2,
+  vec3,
+  vec4,
+} from 'three/tsl'
+import {
+  Color,
+  Node,
+  OrthographicCamera,
+  Scene,
+  Sprite,
+  SpriteNodeMaterial,
+  StorageInstancedBufferAttribute,
+  WebGPURenderer,
+} from 'three/webgpu'
 
-import * as PIXI from 'pixi.js'
-import { Application, Graphics } from 'pixi.js'
+// how close a pointer must be to a dot to grab it
+const GRAB_RADIUS = 20
+const MAX_POINTERS = 4
+// the simulation was tuned per frame at 60hz, so step at a fixed rate
+const STEP = 1 / 60
+const MAX_STEPS_PER_FRAME = 4
 
-import Dot from './dot.ts'
-
-class Node extends Dot {
-  updateAverage(nodes: Node[]) {
-    if (this.lock || this.pause) {
-      return
-    }
-    for (const child of this.children(nodes)) {
-      this.v.add(
-        child.obj.position
-          .subtract(this.obj.position)
-          .multiplyScalar(0.1 * child.weight),
-        this.v,
-      )
-    }
-  }
-
-  updatePhysics() {
-    if (this.pause || this.lock) {
-      return
-    }
-    this.a.multiplyScalar(0.06, this.a)
-    this.v.add(this.a, this.v)
-    this.v.multiplyScalar(0.99, this.v)
-    this.obj.position.add(this.v, this.obj.position)
-  }
+export interface TornadoHoleConfig {
+  lockEdges: boolean
+  // approximate number of dots on screen (rebuilds the grid)
+  dots: number
+  dotSize: number
+  // pull toward each neighbor per step
+  spring: number
+  // fraction of velocity kept per step
+  damping: number
 }
-export default (props: { lockEdges: boolean }) => {
-  const mouseNodes = new Map<number, Node>()
 
+export const defaultTornadoHoleConfig = (): TornadoHoleConfig => ({
+  lockEdges: true,
+  dots: 5000,
+  dotSize: 10,
+  spring: 0.1,
+  damping: 0.99,
+})
+
+export default async (config: TornadoHoleConfig) => {
+  const parent = document.body
+  if (!('gpu' in navigator)) {
+    parent.textContent = 'WebGPU not supported in this browser'
+    return { destroy: () => parent.replaceChildren() }
+  }
+  const { lockEdges } = config
   const width = window.innerWidth
   const height = window.innerHeight
 
-  const app = new Application<HTMLCanvasElement>({
-    antialias: true,
-    background: 'black',
-    resizeTo: window,
-    resolution: 1,
-  })
-  const spacing = 20
+  const renderer = new WebGPURenderer({ antialias: true })
+  renderer.setPixelRatio(window.devicePixelRatio)
+  renderer.setSize(width, height)
+  renderer.setClearColor(0x000000)
+  const canvas = renderer.domElement
+  canvas.style.display = 'block'
+  canvas.style.touchAction = 'none'
+  parent.appendChild(canvas)
+  await renderer.init()
+
+  // spread the requested dots evenly over the screen
+  const spacing = Math.max(0.5, Math.sqrt((width * height) / config.dots))
   const nWide = Math.ceil(width / spacing) + 2
   const nHigh = Math.ceil(height / spacing) + 2
-  const nodes: Node[] = []
+  const count = nWide * nHigh
 
-  const randomColor = Math.random() * 360
+  // positions are in screen pixels (y down); the vertex shader flips them
+  const positions = new Float32Array(count * 2)
+  // rgb + visibility (locked edge dots are invisible)
+  const colors = new Float32Array(count * 4)
+  const randomHue = Math.random() * 360
+  const color = new Color()
   for (let i = 0; i < nHigh; i += 1) {
     for (let j = 0; j < nWide; j += 1) {
-      const circle = new PIXI.Graphics()
-      const color = { h: (i + j) * 2 + randomColor, s: 65, l: 70 }
-      circle.beginFill(color)
-      circle.drawCircle(0, 0, 5)
-      let child = new Graphics(circle.geometry)
-      let lock = false
-      if (i === 0 || j === 0 || j === nWide - 1 || i === nHigh - 1) {
-        child = new Graphics()
-        lock = true
-      }
-      const obj = app.stage.addChild(child)
-      if (props.lockEdges) {
-        obj.position.set(j * spacing - 10, i * spacing - 10)
+      const n = i * nWide + j
+      const locked =
+        lockEdges && (i === 0 || j === 0 || i === nHigh - 1 || j === nWide - 1)
+      if (lockEdges) {
+        positions[n * 2] = j * spacing - spacing / 2
+        positions[n * 2 + 1] = i * spacing - spacing / 2
       } else {
-        obj.position.set(width / 2, height / 2)
+        positions[n * 2] = width / 2
+        positions[n * 2 + 1] = height / 2
       }
-      const node = new Node(obj, i * nWide + j)
-      // it looks cool if you don't lock anything
-      if (props.lockEdges) {
-        node.lock = lock
-      }
-      nodes[node.index] = node
-      // above
-      const above = nodes[(i - 1) * nWide + j]
-      node.addChild(above)
-      // above left
-      // node.addChild(nodes[(i - 2) * nWide + j - 1]);
-      // above right
-      // node.addChild(nodes[(i - 1) * nWide + j + 1]);
-      // left
-      node.addChild(nodes[i * nWide + j - 1])
-      // below
-      // node.addChild(nodes[(i + 1) * nWide + j]);
+      color.setHSL((((i + j) * 2 + randomHue) % 360) / 360, 0.65, 0.7)
+      colors.set([color.r, color.g, color.b, locked ? 0 : 1], n * 4)
     }
   }
-  app.stage.interactive = true
-  app.stage.hitArea = app.screen
-  app.stage.addEventListener('pointermove', (e) => {
-    const mouseNode = mouseNodes.get(e.pointerId)
-    if (!mouseNode) {
+  const spring = uniform(config.spring)
+  const damping = uniform(config.damping)
+  const dotSize = uniform(config.dotSize)
+  const positionAttribute = new StorageInstancedBufferAttribute(positions, 2)
+  const positionBuffer = storage(positionAttribute, 'vec2', count)
+  const velocityBuffer = instancedArray(count, 'vec2')
+  const colorBuffer = instancedArray(colors, 'vec4')
+
+  // each active pointer holds a dot and its direct neighbors at the pointer
+  const slots = Array.from({ length: MAX_POINTERS }, () => ({
+    position: uniform(vec2(0, 0)),
+    // row, column of the held dot, and 1 when the slot is in use
+    cell: uniform(vec3(0, 0, 0)),
+  }))
+
+  const rowCol = (index: Node<'float'>) => {
+    const row = index.div(nWide).floor().toVar()
+    return { row, col: index.sub(row.mul(nWide)).toVar() }
+  }
+  const isUnlocked = (row: Node<'float'>, col: Node<'float'>) =>
+    lockEdges
+      ? row
+          .greaterThan(0)
+          .and(col.greaterThan(0))
+          .and(row.lessThan(nHigh - 1))
+          .and(col.lessThan(nWide - 1))
+      : float(1).greaterThan(0)
+
+  // x, y = where a held dot should be, z = 1 if this dot is held
+  const heldBy = (row: Node<'float'>, col: Node<'float'>) => {
+    const held = vec3(0, 0, 0).toVar()
+    for (const slot of slots) {
+      const distance = abs(row.sub(slot.cell.x)).add(abs(col.sub(slot.cell.y)))
+      If(slot.cell.z.greaterThan(0).and(distance.lessThanEqual(1)), () => {
+        held.assign(vec3(slot.position, 1))
+      })
+    }
+    return held
+  }
+
+  // pull each dot toward its up/down/left/right neighbors
+  const accelerate = Fn(() => {
+    const index = instanceIndex.toInt()
+    const { row, col } = rowCol(float(instanceIndex))
+    If(isUnlocked(row, col).and(heldBy(row, col).z.lessThan(0.5)), () => {
+      const pos = positionBuffer.element(index)
+      const pull = vec2(0, 0).toVar()
+      If(row.greaterThan(0), () => {
+        pull.addAssign(positionBuffer.element(index.sub(nWide)).sub(pos))
+      })
+      If(row.lessThan(nHigh - 1), () => {
+        pull.addAssign(positionBuffer.element(index.add(nWide)).sub(pos))
+      })
+      If(col.greaterThan(0), () => {
+        pull.addAssign(positionBuffer.element(index.sub(1)).sub(pos))
+      })
+      If(col.lessThan(nWide - 1), () => {
+        pull.addAssign(positionBuffer.element(index.add(1)).sub(pos))
+      })
+      const vel = velocityBuffer.element(index)
+      vel.addAssign(pull.mul(spring))
+    })
+  })().compute(count)
+
+  const move = Fn(() => {
+    const index = instanceIndex.toInt()
+    const { row, col } = rowCol(float(instanceIndex))
+    If(isUnlocked(row, col), () => {
+      const pos = positionBuffer.element(index)
+      const vel = velocityBuffer.element(index)
+      const held = heldBy(row, col)
+      If(held.z.greaterThan(0.5), () => {
+        pos.assign(held.xy)
+      }).Else(() => {
+        vel.mulAssign(damping)
+        pos.addAssign(vel)
+      })
+    })
+  })().compute(count)
+
+  const material = new SpriteNodeMaterial({
+    transparent: true,
+    depthWrite: false,
+  })
+  const screenPosition = positionBuffer.toAttribute()
+  material.positionNode = vec3(
+    screenPosition.x.sub(width / 2),
+    float(height / 2).sub(screenPosition.y),
+    0,
+  )
+  // the sprite's own scale would also multiply positionNode, so size via scaleNode
+  material.scaleNode = dotSize
+  const dotColor = colorBuffer.toAttribute()
+  material.colorNode = vec4(dotColor.rgb, 1)
+  const edge = uv().sub(0.5).length()
+  material.opacityNode = float(1)
+    .sub(smoothstep(0.4, 0.5, edge))
+    .mul(dotColor.a)
+  const sprite = new Sprite(material)
+  sprite.count = count
+  sprite.frustumCulled = false
+
+  const scene = new Scene()
+  scene.add(sprite)
+  const camera = new OrthographicCamera(
+    -width / 2,
+    width / 2,
+    height / 2,
+    -height / 2,
+    0.1,
+    10,
+  )
+  camera.position.z = 1
+
+  // pointerId -> slot index; undefined while the grab lookup is in flight
+  const held = new Map<number, number | undefined>()
+  const toLocal = (e: PointerEvent) => {
+    const rect = canvas.getBoundingClientRect()
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
+  }
+
+  const onPointerDown = async (e: PointerEvent) => {
+    if (held.size >= MAX_POINTERS || held.has(e.pointerId)) {
       return
     }
-    mouseNode.obj.position.copyFrom(e.global)
-    for (const child of mouseNode.children(nodes)) {
-      if (child.lock) {
+    held.set(e.pointerId, undefined)
+    const { x, y } = toLocal(e)
+    const buffer = await renderer.getArrayBufferAsync(positionAttribute)
+    const current = new Float32Array(buffer)
+    let nearest = GRAB_RADIUS * GRAB_RADIUS
+    let grabbed = -1
+    for (let n = 0; n < count; n += 1) {
+      const i = Math.floor(n / nWide)
+      const j = n % nWide
+      if (
+        lockEdges &&
+        (i === 0 || j === 0 || i === nHigh - 1 || j === nWide - 1)
+      ) {
         continue
       }
-      child.obj.position.copyFrom(e.global)
-    }
-  })
-  app.stage.addEventListener('pointerdown', (event) => {
-    let mouseNode
-    for (const node of Object.values(nodes)) {
-      if (node.lock) {
-        continue
-      }
-      node.weight = 1
-      if (event.global.subtract(node.obj.position).magnitude() < 20) {
-        mouseNodes.set(event.pointerId, node)
-        mouseNode = node
-        mouseNode.weight = 1
-        break
+      const d2 = (current[n * 2] - x) ** 2 + (current[n * 2 + 1] - y) ** 2
+      if (d2 < nearest) {
+        nearest = d2
+        grabbed = n
       }
     }
-    if (!mouseNode) {
+    // released (or destroyed) while we were looking
+    if (!held.has(e.pointerId)) {
       return
     }
-    mouseNode.pause = true
-    mouseNode.obj.position.copyFrom(event.global)
-    for (const child of mouseNode.children(nodes)) {
-      if (child.lock) {
-        continue
-      }
-      child.obj.position.copyFrom(event.global)
-      child.pause = true
-    }
-  })
-  app.stage.addEventListener('pointerup', (event) => {
-    const mouseNode = mouseNodes.get(event.pointerId)
-    if (!mouseNode) {
+    if (grabbed === -1) {
+      held.delete(e.pointerId)
       return
     }
-    mouseNode.weight = 1
-    mouseNode.obj.position.copyFrom(mouseNode.averageChildren(nodes))
-    mouseNode.pause = false
-    for (const child of mouseNode.children(nodes)) {
-      child.pause = false
+    const used = new Set(held.values())
+    const slotIndex = slots.findIndex((_, s) => !used.has(s))
+    const slot = slots[slotIndex]
+    held.set(e.pointerId, slotIndex)
+    slot.position.value.set(x, y)
+    slot.cell.value.set(Math.floor(grabbed / nWide), grabbed % nWide, 1)
+  }
+  const onPointerMove = (e: PointerEvent) => {
+    const slotIndex = held.get(e.pointerId)
+    if (slotIndex === undefined) {
+      return
     }
-    mouseNodes.delete(event.pointerId)
+    const { x, y } = toLocal(e)
+    slots[slotIndex].position.value.set(x, y)
+  }
+  const onPointerUp = (e: PointerEvent) => {
+    const slotIndex = held.get(e.pointerId)
+    held.delete(e.pointerId)
+    if (slotIndex !== undefined) {
+      slots[slotIndex].cell.value.z = 0
+    }
+  }
+  canvas.addEventListener('pointerdown', onPointerDown)
+  window.addEventListener('pointermove', onPointerMove)
+  window.addEventListener('pointerup', onPointerUp)
+  window.addEventListener('pointercancel', onPointerUp)
+
+  let last = performance.now()
+  let accumulated = 0
+  renderer.setAnimationLoop(() => {
+    spring.value = config.spring
+    damping.value = config.damping
+    dotSize.value = config.dotSize
+    const now = performance.now()
+    accumulated += (now - last) / 1000
+    last = now
+    let steps = 0
+    while (accumulated >= STEP && steps < MAX_STEPS_PER_FRAME) {
+      renderer.compute(accelerate)
+      renderer.compute(move)
+      accumulated -= STEP
+      steps += 1
+    }
+    if (steps === MAX_STEPS_PER_FRAME) {
+      accumulated = 0
+    }
+    renderer.render(scene, camera)
   })
-  app.ticker.add(() => {
-    for (const node of Object.values(nodes)) {
-      node.updateAverage(nodes)
-    }
-    for (const node of Object.values(nodes)) {
-      node.updatePhysics()
-    }
-  })
-  return app
+
+  return {
+    destroy: () => {
+      held.clear()
+      canvas.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup', onPointerUp)
+      window.removeEventListener('pointercancel', onPointerUp)
+      renderer.setAnimationLoop(null)
+      renderer.dispose()
+      canvas.remove()
+    },
+  }
 }

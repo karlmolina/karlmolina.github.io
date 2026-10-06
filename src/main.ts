@@ -4,12 +4,16 @@ import { html } from 'htl'
 import Navigo from 'navigo'
 import p5 from 'p5'
 
+import configMenu from './lib/config-menu.ts'
 import { $ } from './lib/html-utils.ts'
 import home from './pages/home.ts'
 import blob from './sketches/blob.ts'
 import connected from './sketches/connected.ts'
+import gpuBounce from './sketches/gpu-bounce.ts'
 import slinkyMonster from './sketches/slinky-monster.ts'
-import tornadoHole from './sketches/tornado-hole.ts'
+import tornadoHole, {
+  defaultTornadoHoleConfig,
+} from './sketches/tornado-hole.ts'
 import tree from './sketches/tree.ts'
 import sketchUtils from './utils/sketch-utils.ts'
 
@@ -21,6 +25,7 @@ const sketchList = [
   'tree',
   'tornado hole',
   'blob',
+  'gpu bounce',
 ]
 const p5Sketches = {
   connected: connected,
@@ -29,11 +34,14 @@ const p5Sketches = {
 }
 let sketch: p5 | undefined
 let resize: () => void
+let teardown: (() => void) | undefined
 navigo
   .hooks({
     before: (done) => {
       document.body.replaceChildren()
       sketch?.remove()
+      teardown?.()
+      teardown = undefined
       resize && window.removeEventListener('resize', resize)
       done()
     },
@@ -62,23 +70,74 @@ for (const [name, sketchFunction] of Object.entries(p5Sketches)) {
 }
 navigo.on('/tornado%20hole', () => {
   document.title = 'tornado hole'
-  const props = { lockEdges: true }
-  let app = tornadoHole(props)
-  document.body.appendChild(app.view)
-  resize = () => {
-    app.destroy(true)
-    app = tornadoHole(props)
-    document.body.appendChild(app.view)
+  const config = defaultTornadoHoleConfig()
+  const menu = configMenu(
+    'tornado hole',
+    'tornado-hole-config',
+    [
+      {
+        type: 'checkbox',
+        key: 'lockEdges',
+        label: 'lock edges',
+        rebuild: true,
+      },
+      {
+        type: 'range',
+        key: 'dots',
+        label: 'dots',
+        min: 1000,
+        max: 1000000,
+        step: 1000,
+        rebuild: true,
+      },
+      {
+        type: 'range',
+        key: 'dotSize',
+        label: 'dot size',
+        min: 1,
+        max: 30,
+        step: 1,
+      },
+      {
+        type: 'range',
+        key: 'spring',
+        label: 'spring',
+        min: 0.01,
+        max: 0.5,
+        step: 0.01,
+      },
+      {
+        type: 'range',
+        key: 'damping',
+        label: 'damping',
+        min: 0.9,
+        max: 1,
+        step: 0.001,
+      },
+    ],
+    config,
+    () => restart(),
+  )
+  let current = tornadoHole(config)
+  const restart = () => {
+    current.then((s) => {
+      s.destroy()
+      current = tornadoHole(config)
+    })
+  }
+  resize = restart
+  const toggleLockEdges = () => {
+    config.lockEdges = !config.lockEdges
+    menu.sync()
+    restart()
   }
   window.addEventListener('resize', resize)
-  const toggleLockEdges = () => {
-    if (!app.stage) {
-      window.removeEventListener('dblclick', toggleLockEdges)
-    }
-    props.lockEdges = !props.lockEdges
-    resize()
-  }
   window.addEventListener('dblclick', toggleLockEdges)
+  teardown = () => {
+    window.removeEventListener('dblclick', toggleLockEdges)
+    menu.element.remove()
+    current.then((s) => s.destroy())
+  }
 })
 navigo.on('/blob', () => {
   document.title = 'blob'
@@ -88,6 +147,18 @@ navigo.on('/blob', () => {
     app.destroy(true)
     app = blob()
     document.body.appendChild(app.view)
+  }
+  window.addEventListener('resize', resize)
+})
+navigo.on('/gpu%20bounce', () => {
+  document.title = 'gpu bounce'
+  const container = document.body.appendChild(document.createElement('div'))
+  let current = gpuBounce(container)
+  resize = () => {
+    current.then((s) => {
+      s.destroy()
+      current = gpuBounce(container)
+    })
   }
   window.addEventListener('resize', resize)
 })
