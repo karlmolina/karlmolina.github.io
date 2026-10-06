@@ -58,6 +58,8 @@ export interface RainConfig {
   hue: number
   // 0 = gray, 1 = vivid
   saturation: number
+  // how fast the noise moves through its third axis, 0 = static
+  drift: number
   // height buffer generation (rebuilds the sketch)
   noiseScale: number
   octaves: number
@@ -75,6 +77,7 @@ export const defaultRainConfig = (): RainConfig => ({
   terrain: 0,
   hue: 205,
   saturation: 0.8,
+  drift: 0.1,
   noiseScale: 220,
   octaves: 4,
   seed: 1,
@@ -173,6 +176,15 @@ export const rainControls: Control<RainConfig>[] = [
   },
   {
     type: 'range',
+    key: 'drift',
+    label: 'drift',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    help: 'How fast the terrain morphs over time. 0 keeps it still. Carved erosion channels stay where they are while the ground shifts under them.',
+  },
+  {
+    type: 'range',
     key: 'noiseScale',
     label: 'noise scale',
     min: 40,
@@ -242,6 +254,9 @@ export default async (config: RainConfig) => {
   const half = vec2(width / 2, height / 2)
   const gridMax = vec2(cols - 1, rows - 1)
 
+  // third noise axis, advanced every frame so the terrain slowly morphs
+  const noiseTime = uniform(0)
+
   // fractal perlin noise in 0-1 at a position in pixels from the bottom left
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const noiseHeight = (pixels: any) => {
@@ -252,9 +267,9 @@ export default async (config: RainConfig) => {
     let total = 0
     for (let o = 0; o < config.octaves; o += 1) {
       sum = sum.add(
-        mx_noise_float(vec3(p.mul(frequency), config.seed * 7.31)).mul(
-          amplitude,
-        ),
+        mx_noise_float(
+          vec3(p.mul(frequency), noiseTime.mul(frequency).add(config.seed * 7.31)),
+        ).mul(amplitude),
       )
       total += amplitude
       amplitude *= 0.5
@@ -467,6 +482,9 @@ export default async (config: RainConfig) => {
       config.trail > 0 ? Math.exp(-(delta * 4) / config.trail) : 0
     terrainBrightness.value = config.terrain
     dropColor.value.setHSL(config.hue / 360, config.saturation, 0.6)
+    noiseTime.value += delta * config.drift
+    // the height buffer is only for display, so skip it while terrain is hidden
+    if (config.terrain > 0 && config.drift > 0) renderer.compute(initHeights)
     renderer.compute(update)
     renderer.compute(fade)
     renderer.render(scene, camera)
