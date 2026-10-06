@@ -9,7 +9,7 @@ import { $ } from './lib/html-utils.ts'
 import home from './pages/home.ts'
 import blob from './sketches/blob.ts'
 import connected from './sketches/connected.ts'
-import gpuBounce from './sketches/gpu-bounce.ts'
+import electricBirds from './sketches/electric-birds.ts'
 import slinkyMonster from './sketches/slinky-monster.ts'
 import tornadoHole, {
   defaultTornadoHoleConfig,
@@ -25,7 +25,7 @@ const sketchList = [
   'tree',
   'tornado hole',
   'blob',
-  'gpu bounce',
+  'electric birds',
 ]
 const p5Sketches = {
   connected: connected,
@@ -150,14 +150,14 @@ navigo.on('/blob', () => {
   }
   window.addEventListener('resize', resize)
 })
-navigo.on('/gpu%20bounce', () => {
-  document.title = 'gpu bounce'
+navigo.on('/electric%20birds', () => {
+  document.title = 'electric birds'
   const container = document.body.appendChild(document.createElement('div'))
-  let current = gpuBounce(container)
+  let current = electricBirds(container)
   resize = () => {
     current.then((s) => {
       s.destroy()
-      current = gpuBounce(container)
+      current = electricBirds(container)
     })
   }
   window.addEventListener('resize', resize)
