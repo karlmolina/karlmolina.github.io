@@ -7,7 +7,7 @@ import p5 from 'p5'
 import configMenu from './lib/config-menu.ts'
 import { $ } from './lib/html-utils.ts'
 import home from './pages/home.ts'
-import blob from './sketches/blob.ts'
+import blob, { blobControls, defaultBlobConfig } from './sketches/blob.ts'
 import connected from './sketches/connected.ts'
 import electricBirds, {
   defaultElectricBirdsConfig,
@@ -143,14 +143,21 @@ navigo.on('/tornado%20hole', () => {
 })
 navigo.on('/blob', () => {
   document.title = 'blob'
-  let app = blob()
+  const config = defaultBlobConfig()
+  const menu = configMenu('blob-config', blobControls, config, () => resize())
+  // the page is white, so the menu text needs to be dark
+  menu.element.style.color = '#000'
+  let app = blob(config)
   document.body.appendChild(app.view)
   resize = () => {
     app.destroy(true)
-    app = blob()
+    app = blob(config)
     document.body.appendChild(app.view)
   }
   window.addEventListener('resize', resize)
+  teardown = () => {
+    menu.element.remove()
+  }
 })
 navigo.on('/electric%20birds', () => {
   document.title = 'electric birds'
