@@ -388,6 +388,9 @@ export default async (parent: HTMLElement) => {
     sprite.count = v
     lines.count = v * MAX_LINKS
   })
+  slider('size', 'dot size', 1, 8, 0.5, PARTICLE_SIZE, (v) => {
+    dotSize.value = v
+  })
   slider('links', 'lines per dot', 0, MAX_LINKS, 1, LINKS, (v) => {
     linkCount.value = v
   })
@@ -446,9 +449,6 @@ export default async (parent: HTMLElement) => {
   })
   slider('maxAccel', 'max accel', 0, 1000, 10, MAX_ACCEL, (v) => {
     maxAccel.value = v
-  })
-  slider('size', 'dot size', 1, 8, 0.5, PARTICLE_SIZE, (v) => {
-    dotSize.value = v
   })
   setCollapsed(saved.collapsed === 1)
   // keep clicks and drags on the panel from reaching the page
