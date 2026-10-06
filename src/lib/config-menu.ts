@@ -24,6 +24,21 @@ const save = (storageKey: string, values: unknown) => {
   }
 }
 
+// Values shared through the url live in the hash query (`#/rain?dots=100`),
+// since routing is hash based.
+const loadFromUrl = (): Record<string, string> => {
+  const query = window.location.hash.split('?')[1] ?? ''
+  return Object.fromEntries(new URLSearchParams(query))
+}
+const saveToUrl = (values: Record<string, number | boolean>) => {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(values)) {
+    params.set(key, String(value))
+  }
+  const path = window.location.hash.split('?')[0]
+  window.history.replaceState(null, '', `${path}?${params}`)
+}
+
 // A collapsible panel in the top right that edits `config` in place and
 // remembers its values. Controls marked `rebuild` call onRebuild when changed;
 // the rest are read live by the sketch.
@@ -40,8 +55,26 @@ export default <T extends object>(
       values[key] = saved[key]
     }
   }
+  // values in the url win over locally saved ones so shared links look the same
+  const shared = loadFromUrl()
+  for (const control of controls) {
+    const raw = shared[control.key]
+    if (raw === undefined) continue
+    if (control.type === 'checkbox') {
+      if (raw === 'true' || raw === 'false')
+        values[control.key] = raw === 'true'
+    } else if (raw.trim() !== '' && Number.isFinite(Number(raw))) {
+      values[control.key] = Math.min(
+        control.max,
+        Math.max(control.min, Number(raw)),
+      )
+    }
+  }
   let collapsed = saved.collapsed !== false
-  const persist = () => save(storageKey, { ...values, collapsed })
+  const persist = () => {
+    save(storageKey, { ...values, collapsed })
+    saveToUrl(values)
+  }
 
   const element = document.body.appendChild(document.createElement('div'))
   element.style.cssText =
