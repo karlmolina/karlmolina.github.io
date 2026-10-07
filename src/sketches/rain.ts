@@ -137,15 +137,6 @@ export const rainControls: Control<RainConfig>[] = [
   },
   {
     type: 'range',
-    key: 'erosion',
-    label: 'erosion',
-    min: 0,
-    max: 0.2,
-    step: 0.005,
-    help: 'How fast drops carve the ground they roll over. Carved paths get lower, so later drops are pulled into them and form channels. 0 turns it off.',
-  },
-  {
-    type: 'range',
     key: 'trail',
     label: 'trail',
     min: 0,
