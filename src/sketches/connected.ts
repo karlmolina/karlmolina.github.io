@@ -2,10 +2,14 @@ import { Vector } from 'p5'
 
 import sketchUtils, { Sketch } from '../utils/sketch-utils.ts'
 
+interface Point {
+  x: number
+  y: number
+}
+
 export default (s: Sketch) => {
   const touchDevice = 'ontouchstart' in document.documentElement
-  let v1
-  let drawingSize
+  let drawingSize = 0
 
   s.setup = () => {
     s.colorMode(s.HSB)
@@ -32,10 +36,8 @@ export default (s: Sketch) => {
     s.fill(0, 0.05)
     s.rect(0, 0, s.width, s.height)
     c = (c + 2) % 360
-    let period = 100
-    const angle = ((s.frameCount % period) / period) * s.TWO_PI
-    const vectors = []
-    period = 300
+    const period = 300
+    const vectors: Vector[] = []
     vectors.push(getRotatedVectorAroundCenter(period, 0, drawingSize))
     vectors.push(
       getRotatedVectorAroundCenter(period * 1.2, 0, drawingSize * 0.3),
@@ -52,12 +54,16 @@ export default (s: Sketch) => {
     drawLines(vectors)
   }
 
-  function getRotatedVector(period, periodOffset) {
+  function getRotatedVector(period: number, periodOffset: number) {
     const angle = (((s.frameCount + periodOffset) % period) / period) * s.TWO_PI
     return Vector.fromAngle(angle)
   }
 
-  function getRotatedVectorAroundCenter(period, periodOffset, mag) {
+  function getRotatedVectorAroundCenter(
+    period: number,
+    periodOffset: number,
+    mag: number,
+  ) {
     const v = getRotatedVector(period, periodOffset)
     v.setMag(mag)
 
@@ -74,10 +80,10 @@ export default (s: Sketch) => {
 
     s.stroke(c, 255, 255)
 
-    drawLines(s.touches)
+    drawLines(s.touches as Point[])
   }
 
-  function drawLines(vectors) {
+  function drawLines(vectors: Point[]) {
     for (let i = 0; i < vectors.length; i++) {
       const t1 = vectors[i]
       for (let j = i + 1; j < vectors.length; j++) {
@@ -87,7 +93,7 @@ export default (s: Sketch) => {
     }
   }
 
-  function drawLine(t1, t2) {
+  function drawLine(t1: Point, t2: Point) {
     s.line(t1.x, t1.y, t2.x, t2.y)
   }
 

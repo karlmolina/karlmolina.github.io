@@ -67,7 +67,6 @@ export default (s: Sketch) => {
         const timeSince = (birthday: number) => new Date().getTime() - birthday
         const age = timeSince(item.birthday)
         const splitRate = 0.001 * age * (1 / item.size + 0.02)
-        const killRate = 0.0001 * treeItems.length
         if (
           item.p.x < 0 ||
           item.p.x > s.width ||

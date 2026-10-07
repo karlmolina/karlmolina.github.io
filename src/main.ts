@@ -19,10 +19,10 @@ import tornadoHole, {
   defaultTornadoHoleConfig,
 } from './sketches/tornado-hole.ts'
 import tree from './sketches/tree.ts'
-import vectorField, {
-  defaultVectorFieldConfig,
-  vectorFieldControls,
-} from './sketches/vector-field.ts'
+import smoke, {
+  defaultSmokeConfig,
+  smokeControls,
+} from './sketches/smoke.ts'
 import sketchUtils from './utils/sketch-utils.ts'
 
 const navigo = new Navigo('/', { hash: true })
@@ -35,7 +35,7 @@ const sketchList = [
   'blob',
   'electric birds',
   'rain',
-  'vector field',
+  'smoke',
 ]
 const p5Sketches = {
   connected: connected,
@@ -244,20 +244,20 @@ navigo.on('/rain', () => {
     current.then((s) => s.destroy())
   }
 })
-navigo.on('/vector%20field', () => {
-  document.title = 'vector field'
-  const config = defaultVectorFieldConfig()
+navigo.on('/smoke', () => {
+  document.title = 'smoke'
+  const config = defaultSmokeConfig()
   const menu = configMenu(
-    'vector-field-config',
-    vectorFieldControls,
+    'smoke-config',
+    smokeControls,
     config,
     () => restart(),
   )
-  let current = vectorField(config)
+  let current = smoke(config)
   const restart = () => {
     current.then((s) => {
       s.destroy()
-      current = vectorField(config)
+      current = smoke(config)
     })
   }
   resize = restart

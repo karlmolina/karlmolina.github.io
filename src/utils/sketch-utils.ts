@@ -20,37 +20,6 @@ function getWindowDimensions(s: Sketch) {
   return [width, height]
 }
 
-function showDebugInfo(s: Sketch, pg: Sketch, maxWidth: number) {
-  pg.clear()
-  const debugInfo = [
-    'fps: ' + Math.round(s.frameRate()),
-    'width: ' + s.width,
-    'height: ' + s.height,
-    'mouseX: ' + Math.round(s.mouseX),
-    'mouseY: ' + Math.round(s.mouseY),
-  ]
-
-  debugInfo.forEach((info) => {
-    const width = pg.textWidth(info)
-    if (width > maxWidth) {
-      maxWidth = width
-    }
-  })
-  pg.push()
-  pg.translate(10, 10)
-
-  pg.rect(0, 0, Math.round(maxWidth) + 10, pg.textSize() * debugInfo.length + 5)
-
-  for (let i = 0; i < debugInfo.length; i++) {
-    const info = debugInfo[i]
-    pg.text(info, 5, (i + 1) * pg.textSize())
-  }
-
-  pg.pop()
-
-  s.image(pg, 0, 0)
-}
-
 function getCenter(s: Sketch) {
   return s.createVector(s.width / 2, s.height / 2)
 }

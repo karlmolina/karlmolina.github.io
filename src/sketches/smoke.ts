@@ -28,7 +28,7 @@ import {
 
 import type { Control } from '../lib/config-menu.ts'
 
-export interface VectorFieldConfig {
+export interface SmokeConfig {
   // size of one cell in pixels (rebuilds the grid)
   cellSize: number
   // size of each smoke puff, in cells
@@ -53,7 +53,7 @@ export interface VectorFieldConfig {
   opacity: number
 }
 
-export const defaultVectorFieldConfig = (): VectorFieldConfig => ({
+export const defaultSmokeConfig = (): SmokeConfig => ({
   cellSize: 8,
   softness: 3,
   drag: 0.2,
@@ -67,7 +67,7 @@ export const defaultVectorFieldConfig = (): VectorFieldConfig => ({
   opacity: 1,
 })
 
-export const vectorFieldControls: Control<VectorFieldConfig>[] = [
+export const smokeControls: Control<SmokeConfig>[] = [
   {
     type: 'range',
     key: 'cellSize',
@@ -171,7 +171,7 @@ export const vectorFieldControls: Control<VectorFieldConfig>[] = [
 // cells per step; keeps the semi-Lagrangian trace back short
 const MAX_SPEED = 3
 
-export default async (config: VectorFieldConfig) => {
+export default async (config: SmokeConfig) => {
   const parent = document.body
   if (!('gpu' in navigator)) {
     parent.textContent = 'WebGPU not supported in this browser'
