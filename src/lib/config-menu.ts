@@ -186,6 +186,112 @@ export default <T extends object>(
   }
   const sync = () => syncers.forEach((fn) => fn())
   sync()
+
+  // named presets, kept in their own localStorage entry
+  const presetKey = `${storageKey}-presets`
+  const loadPresets = (): Record<string, Record<string, number | boolean>> => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(presetKey) ?? '{}')
+      return parsed && typeof parsed === 'object' ? parsed : {}
+    } catch {
+      return {}
+    }
+  }
+  const savePresets = (presets: unknown) => save(presetKey, presets)
+  const presetBox = panel.appendChild(document.createElement('div'))
+  presetBox.style.cssText =
+    'margin-top:8px;padding-top:6px;border-top:1px solid currentColor'
+  const buttonCss =
+    'cursor:pointer;font:inherit;color:inherit;background:transparent;border:1px solid currentColor;border-radius:3px;padding:0 5px'
+  const linkCss =
+    'cursor:pointer;font:inherit;color:inherit;background:transparent;border:0;padding:0;text-decoration:underline'
+  const makeButton = (label: string, onClick: () => void, css = buttonCss) => {
+    const button = document.createElement('button')
+    button.textContent = label
+    button.style.cssText = css
+    button.addEventListener('click', onClick)
+    return button
+  }
+  const loadPreset = (preset: Record<string, number | boolean>) => {
+    let rebuild = false
+    for (const control of controls) {
+      const value = preset[control.key]
+      if (typeof value !== (control.type === 'checkbox' ? 'boolean' : 'number'))
+        continue
+      if (value !== values[control.key] && control.rebuild) rebuild = true
+      values[control.key] = value
+    }
+    sync()
+    persist()
+    if (rebuild) onRebuild()
+  }
+  const renderPresets = () => {
+    presetBox.replaceChildren()
+    const presets = loadPresets()
+    const title = presetBox.appendChild(document.createElement('div'))
+    title.style.cssText = 'display:flex;justify-content:space-between'
+    title.append(
+      'presets',
+      makeButton('save', () => {
+        const all = loadPresets()
+        let n = 1
+        while (`preset #${n}` in all) n += 1
+        all[`preset #${n}`] = { ...values }
+        savePresets(all)
+        renderPresets()
+      }),
+    )
+    for (const [name, preset] of Object.entries(presets)) {
+      const row = presetBox.appendChild(document.createElement('div'))
+      row.style.cssText =
+        'display:flex;justify-content:space-between;gap:4px;margin-top:4px'
+      const input = document.createElement('input')
+      input.value = name
+      input.title = 'click to rename'
+      input.style.cssText = `${buttonCss};flex:1;min-width:0;width:0;cursor:text`
+      let done = false
+      const finish = (commit: boolean) => {
+        if (done) return
+        done = true
+        const next = input.value.trim()
+        if (commit && next && next !== name && !(next in presets)) {
+          // rebuild in order so the renamed preset keeps its place
+          savePresets(
+            Object.fromEntries(
+              Object.entries(loadPresets()).map(([key, value]) => [
+                key === name ? next : key,
+                value,
+              ]),
+            ),
+          )
+        }
+        renderPresets()
+      }
+      input.addEventListener('keydown', (e) => {
+        e.stopPropagation()
+        if (e.key === 'Enter') finish(true)
+        else if (e.key === 'Escape') finish(false)
+      })
+      input.addEventListener('blur', () => finish(true))
+      input.addEventListener('focus', () => input.select())
+      row.append(
+        input,
+        makeButton('load', () => loadPreset(preset), linkCss),
+        makeButton(
+          'x',
+          () => {
+            const rest = Object.fromEntries(
+              Object.entries(loadPresets()).filter(([key]) => key !== name),
+            )
+            savePresets(rest)
+            renderPresets()
+          },
+          linkCss,
+        ),
+      )
+    }
+  }
+  renderPresets()
   return {
     element,
     // call after changing config from outside the panel
