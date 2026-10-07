@@ -37,8 +37,6 @@ const COUNT = 20_000
 const CELL = 2
 // distance in pixels between the two samples used to measure the slope
 const SLOPE_STEP = 2
-// the deepest erosion can carve, in height units (the terrain spans 0-1)
-const MAX_EROSION = 0.4
 
 export interface RainConfig {
   dots: number
@@ -50,8 +48,6 @@ export interface RainConfig {
   lifetime: number
   // seconds a drop's trail takes to fade
   trail: number
-  // how fast drops carve the ground (height per second of rain), 0 = off
-  erosion: number
   // how bright the terrain is under the drops, 0-1
   terrain: number
   // how fast the noise moves through its third axis, 0 = static
@@ -77,7 +73,6 @@ export const defaultRainConfig = (): RainConfig => ({
   friction: 1.5,
   lifetime: 6,
   trail: 2,
-  erosion: 0.03,
   terrain: 0,
   drift: 0.1,
   hue: 200,
@@ -160,7 +155,7 @@ export const rainControls: Control<RainConfig>[] = [
     min: 0,
     max: 1,
     step: 0.01,
-    help: 'How fast the terrain morphs over time. 0 keeps it still. Carved erosion channels stay where they are while the ground shifts under them.',
+    help: 'How fast the terrain morphs over time. 0 keeps it still.',
   },
   {
     type: 'range',
@@ -265,8 +260,6 @@ export default async (config: RainConfig) => {
   const trailBuffer = instancedArray(cols * rows, 'float')
   // color of the drop that last wet each cell
   const trailColorBuffer = instancedArray(cols * rows, 'vec3')
-  // how far drops have worn each cell down; the ground is noise minus this
-  const erosionBuffer = instancedArray(cols * rows, 'float')
 
   const half = vec2(width / 2, height / 2)
   const gridMax = vec2(cols - 1, rows - 1)
@@ -329,8 +322,6 @@ export default async (config: RainConfig) => {
   const sampleTrail: any = bilinear(trailBuffer)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sampleTrailColor: any = bilinear(trailColorBuffer as any)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sampleErosion: any = bilinear(erosionBuffer)
 
   // drops: position and velocity in pixels from the screen center, plus
   // the seconds each one has left before it respawns
@@ -361,7 +352,6 @@ export default async (config: RainConfig) => {
   const damping = uniform(1)
   const lifetime = uniform(0)
   const trailDecay = uniform(0)
-  const erosionRate = uniform(0)
   // hue in turns (0-1) and how far direction moves it
   const hueBase = uniform(0)
   const hueSpread = uniform(1)
@@ -410,16 +400,7 @@ export default async (config: RainConfig) => {
         noiseHeight(here.sub(vec2(0, SLOPE_STEP))),
       )
       // roll toward lower ground
-      const noiseSlope = vec2(dx, dy).div(2 * SLOPE_STEP)
-      // carved ground is lower, so its slope is subtracted (smooth enough
-      // because erosion is written as soft splats)
-      const gx = sampleErosion(grid.add(vec2(1, 0))).sub(
-        sampleErosion(grid.sub(vec2(1, 0))),
-      )
-      const gy = sampleErosion(grid.add(vec2(0, 1))).sub(
-        sampleErosion(grid.sub(vec2(0, 1))),
-      )
-      const slope = noiseSlope.sub(vec2(gx, gy).div(2 * CELL))
+      const slope = vec2(dx, dy).div(2 * SLOPE_STEP)
       vel.addAssign(slope.mul(gravity.negate()).mul(dt))
       vel.assign(vel.mul(damping))
       pos.addAssign(vel.mul(dt))
@@ -446,11 +427,6 @@ export default async (config: RainConfig) => {
           wet.assign(weight)
           trailColorBuffer.element(cellIndex).assign(directionColor(vel))
         })
-        // wear the ground down a little, up to a maximum depth
-        const worn = erosionBuffer.element(
-          cell.y.mul(cols).add(cell.x).toUint(),
-        )
-        worn.assign(worn.add(weight.mul(erosionRate).mul(dt)).min(MAX_EROSION))
       }
 
       const outside = pos.x
@@ -479,8 +455,6 @@ export default async (config: RainConfig) => {
   terrainMaterial.depthWrite = false
   const terrainGrid = uv().mul(vec2(cols, rows))
   const terrainHeight = sampleHeight(terrainGrid)
-    .sub(sampleErosion(terrainGrid))
-    .max(0)
   const wet = sampleTrail(terrainGrid)
   terrainMaterial.colorNode = mix(
     vec3(terrainHeight.mul(0.9).mul(terrainBrightness)),
@@ -526,7 +500,6 @@ export default async (config: RainConfig) => {
     gravity.value = config.gravity
     damping.value = Math.exp(-config.friction * delta)
     lifetime.value = config.lifetime
-    erosionRate.value = config.erosion
     hueBase.value = config.hue / 360
     hueSpread.value = config.hueSpread
     trailDecay.value =
