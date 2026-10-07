@@ -5,6 +5,7 @@ import {
   If,
   instancedArray,
   instanceIndex,
+  length,
   mix,
   smoothstep,
   storage,
@@ -52,6 +53,10 @@ export interface TornadoHoleConfig {
   speed: number
   // opacity of the dots, 0-1
   opacity: number
+  // how far from a held pointer dots get pushed away, in pixels
+  pushRadius: number
+  // velocity added per step at the pointer, fading to 0 at the radius; 0 = off
+  pushStrength: number
 }
 
 export const defaultTornadoHoleConfig = (): TornadoHoleConfig => ({
@@ -65,6 +70,8 @@ export const defaultTornadoHoleConfig = (): TornadoHoleConfig => ({
   damping: 0.99,
   speed: 1,
   opacity: 1,
+  pushRadius: 100,
+  pushStrength: 1,
 })
 
 export default async (config: TornadoHoleConfig) => {
@@ -126,6 +133,8 @@ export default async (config: TornadoHoleConfig) => {
   const stepScale = uniform(1)
   const dotSize = uniform(config.dotSize)
   const dotOpacity = uniform(config.opacity)
+  const pushRadius = uniform(config.pushRadius)
+  const pushStrength = uniform(config.pushStrength)
   const positionAttribute = new StorageInstancedBufferAttribute(positions, 2)
   const positionBuffer = storage(positionAttribute, 'vec2', count)
   const velocityBuffer = instancedArray(count, 'vec2')
@@ -203,6 +212,21 @@ export default async (config: TornadoHoleConfig) => {
         })
         const vel = velocityBuffer.element(index)
         vel.addAssign(pull.mul(spring))
+        // held pointers push nearby dots radially away, strongest at the pointer
+        for (const slot of slots) {
+          const away = pos.sub(slot.position)
+          const distance = length(away)
+          If(
+            slot.cell.z
+              .greaterThan(0)
+              .and(distance.greaterThan(0.001))
+              .and(distance.lessThan(pushRadius)),
+            () => {
+              const falloff = float(1).sub(distance.div(pushRadius))
+              vel.addAssign(away.div(distance).mul(pushStrength).mul(falloff))
+            },
+          )
+        }
       },
     )
   })().compute(count)
@@ -354,6 +378,8 @@ export default async (config: TornadoHoleConfig) => {
     damping.value = config.damping ** scale
     dotSize.value = config.dotSize
     dotOpacity.value = config.opacity
+    pushRadius.value = config.pushRadius
+    pushStrength.value = config.pushStrength * scale
     const now = performance.now()
     accumulated += ((now - last) / 1000) * Math.max(config.speed, 1)
     last = now

@@ -19,6 +19,10 @@ import tornadoHole, {
   defaultTornadoHoleConfig,
 } from './sketches/tornado-hole.ts'
 import tree from './sketches/tree.ts'
+import vectorField, {
+  defaultVectorFieldConfig,
+  vectorFieldControls,
+} from './sketches/vector-field.ts'
 import sketchUtils from './utils/sketch-utils.ts'
 
 const navigo = new Navigo('/', { hash: true })
@@ -31,6 +35,7 @@ const sketchList = [
   'blob',
   'electric birds',
   'rain',
+  'vector field',
 ]
 const p5Sketches = {
   connected: connected,
@@ -144,6 +149,24 @@ navigo.on('/tornado%20hole', () => {
         step: 0.05,
         help: 'How see-through the dots are. Low values let overlapping dots build up brightness.',
       },
+      {
+        type: 'range',
+        key: 'pushRadius',
+        label: 'push radius',
+        min: 20,
+        max: 400,
+        step: 10,
+        help: 'How far from a held dot the pointer pushes other dots away, in pixels.',
+      },
+      {
+        type: 'range',
+        key: 'pushStrength',
+        label: 'push strength',
+        min: 0,
+        max: 5,
+        step: 0.1,
+        help: 'How hard a held pointer shoves nearby dots outward. 0 turns the push off.',
+      },
     ],
     config,
     () => restart(),
@@ -212,6 +235,29 @@ navigo.on('/rain', () => {
     current.then((s) => {
       s.destroy()
       current = rain(config)
+    })
+  }
+  resize = restart
+  window.addEventListener('resize', resize)
+  teardown = () => {
+    menu.element.remove()
+    current.then((s) => s.destroy())
+  }
+})
+navigo.on('/vector%20field', () => {
+  document.title = 'vector field'
+  const config = defaultVectorFieldConfig()
+  const menu = configMenu(
+    'vector-field-config',
+    vectorFieldControls,
+    config,
+    () => restart(),
+  )
+  let current = vectorField(config)
+  const restart = () => {
+    current.then((s) => {
+      s.destroy()
+      current = vectorField(config)
     })
   }
   resize = restart
