@@ -16,7 +16,6 @@ import {
   vec3,
 } from 'three/tsl'
 import {
-  Color,
   Mesh,
   MeshBasicNodeMaterial,
   OrthographicCamera,
@@ -54,10 +53,6 @@ export interface RainConfig {
   erosion: number
   // how bright the terrain is under the drops, 0-1
   terrain: number
-  // drop and trail color, hue in degrees
-  hue: number
-  // 0 = gray, 1 = vivid
-  saturation: number
   // how fast the noise moves through its third axis, 0 = static
   drift: number
   // height buffer generation (rebuilds the sketch)
@@ -75,8 +70,6 @@ export const defaultRainConfig = (): RainConfig => ({
   trail: 2,
   erosion: 0.03,
   terrain: 0,
-  hue: 205,
-  saturation: 0.8,
   drift: 0.1,
   noiseScale: 220,
   octaves: 4,
@@ -146,24 +139,6 @@ export const rainControls: Control<RainConfig>[] = [
     max: 10,
     step: 0.25,
     help: 'Seconds the wet path behind each drop takes to fade. 0 hides trails.',
-  },
-  {
-    type: 'range',
-    key: 'hue',
-    label: 'drop hue',
-    min: 0,
-    max: 360,
-    step: 5,
-    help: 'Color of the drops and the wet trails they leave, as a hue in degrees (0 red, 120 green, 240 blue).',
-  },
-  {
-    type: 'range',
-    key: 'saturation',
-    label: 'saturation',
-    min: 0,
-    max: 1,
-    step: 0.05,
-    help: 'How vivid the drop color is. 0 makes white drops.',
   },
   {
     type: 'range',
@@ -248,6 +223,8 @@ export default async (config: RainConfig) => {
   const heightBuffer = instancedArray(cols * rows, 'float')
   // how recently a drop passed over each cell (1 = just now, fades to 0)
   const trailBuffer = instancedArray(cols * rows, 'float')
+  // color of the drop that last wet each cell
+  const trailColorBuffer = instancedArray(cols * rows, 'vec3')
   // how far drops have worn each cell down; the ground is noise minus this
   const erosionBuffer = instancedArray(cols * rows, 'float')
 
@@ -308,6 +285,8 @@ export default async (config: RainConfig) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sampleTrail: any = bilinear(trailBuffer)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sampleTrailColor: any = bilinear(trailColorBuffer as any)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sampleErosion: any = bilinear(erosionBuffer)
 
   // drops: position and velocity in pixels from the screen center, plus
@@ -342,6 +321,11 @@ export default async (config: RainConfig) => {
   const erosionRate = uniform(0)
 
   // 1. roll downhill on the height buffer; respawn when done
+  // color by travel direction, same rule as electric birds
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const directionColor = (v: any) =>
+    vec3(v.div(length(v).max(0.0001)).mul(0.5).add(0.5), 0.9)
+
   const update = Fn(() => {
     If(isActive, () => {
       const pos = positionBuffer.element(instanceIndex)
@@ -398,8 +382,12 @@ export default async (config: RainConfig) => {
           oy ? f.y : f.y.oneMinus(),
         )
         const cell = base.add(vec2(ox, oy)).clamp(vec2(0, 0), gridMax)
-        const wet = trailBuffer.element(cell.y.mul(cols).add(cell.x).toUint())
-        wet.assign(wet.max(weight))
+        const cellIndex = cell.y.mul(cols).add(cell.x).toUint()
+        const wet = trailBuffer.element(cellIndex)
+        If(weight.greaterThan(wet), () => {
+          wet.assign(weight)
+          trailColorBuffer.element(cellIndex).assign(directionColor(vel))
+        })
         // wear the ground down a little, up to a maximum depth
         const worn = erosionBuffer.element(
           cell.y.mul(cols).add(cell.x).toUint(),
@@ -427,8 +415,7 @@ export default async (config: RainConfig) => {
     t.assign(t.mul(trailDecay))
   })().compute(cols * rows)
 
-  // terrain: height map in grays with the wet trails tinted blue
-  const dropColor = uniform(new Color())
+  // terrain: height map in grays with the wet trails tinted by the drop that made them
   const terrainBrightness = uniform(1)
   const terrainMaterial = new MeshBasicNodeMaterial()
   terrainMaterial.depthWrite = false
@@ -439,14 +426,14 @@ export default async (config: RainConfig) => {
   const wet = sampleTrail(terrainGrid)
   terrainMaterial.colorNode = mix(
     vec3(terrainHeight.mul(0.9).mul(terrainBrightness)),
-    dropColor.mul(0.8),
+    sampleTrailColor(terrainGrid).mul(0.8),
     wet.mul(0.6),
   )
   const terrain = new Mesh(new PlaneGeometry(width, height), terrainMaterial)
   terrain.renderOrder = -1
   scene.add(terrain)
 
-  // drops: blue
+  // drops: colored by direction
   const material = new SpriteNodeMaterial()
   material.depthTest = false
   material.depthWrite = false
@@ -456,7 +443,7 @@ export default async (config: RainConfig) => {
   // round, soft-edged drops instead of squares
   material.transparent = true
   material.opacityNode = smoothstep(0.5, 0.3, length(uv().sub(0.5)))
-  material.colorNode = dropColor
+  material.colorNode = directionColor(velocityBuffer.toAttribute())
   const sprite = new Sprite(material)
   sprite.count = COUNT
   sprite.frustumCulled = false
@@ -481,7 +468,6 @@ export default async (config: RainConfig) => {
     trailDecay.value =
       config.trail > 0 ? Math.exp(-(delta * 4) / config.trail) : 0
     terrainBrightness.value = config.terrain
-    dropColor.value.setHSL(config.hue / 360, config.saturation, 0.6)
     noiseTime.value += delta * config.drift
     // the height buffer is only for display, so skip it while terrain is hidden
     if (config.terrain > 0 && config.drift > 0) renderer.compute(initHeights)
