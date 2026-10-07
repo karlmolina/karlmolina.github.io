@@ -1,4 +1,5 @@
 import {
+  atan,
   Fn,
   hash,
   If,
@@ -55,6 +56,10 @@ export interface RainConfig {
   terrain: number
   // how fast the noise moves through its third axis, 0 = static
   drift: number
+  // base hue of the drops in degrees
+  hue: number
+  // how much the hue changes with travel direction, 0 = one color, 1 = full rainbow
+  hueSpread: number
   // height buffer generation (rebuilds the sketch)
   noiseScale: number
   octaves: number
@@ -71,6 +76,8 @@ export const defaultRainConfig = (): RainConfig => ({
   erosion: 0.03,
   terrain: 0,
   drift: 0.1,
+  hue: 200,
+  hueSpread: 1,
   noiseScale: 220,
   octaves: 4,
   seed: 1,
@@ -187,6 +194,24 @@ export const rainControls: Control<RainConfig>[] = [
     step: 1,
     rebuild: true,
     help: 'Picks a different random terrain.',
+  },
+  {
+    type: 'range',
+    key: 'hue',
+    label: 'hue',
+    min: 0,
+    max: 360,
+    step: 1,
+    help: 'Base color of the drops and trails, as a hue angle.',
+  },
+  {
+    type: 'range',
+    key: 'hueSpread',
+    label: 'hue spread',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    help: 'How much the color changes with the direction a drop travels. 1 spans the whole rainbow, 0 makes every drop the same color.',
   },
 ]
 
@@ -319,12 +344,27 @@ export default async (config: RainConfig) => {
   const lifetime = uniform(0)
   const trailDecay = uniform(0)
   const erosionRate = uniform(0)
+  // hue in turns (0-1) and how far direction moves it
+  const hueBase = uniform(0)
+  const hueSpread = uniform(1)
 
   // 1. roll downhill on the height buffer; respawn when done
   // color by travel direction, same rule as electric birds
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const directionColor = (v: any) =>
-    vec3(v.div(length(v).max(0.0001)).mul(0.5).add(0.5), 0.9)
+  const directionColor = (v: any) => {
+    const turns = atan(v.y, v.x).div(2 * Math.PI)
+    const h = hueBase.add(turns.mul(hueSpread))
+    // hue to rgb at full saturation, then softened toward white
+    const rgb = h
+      .mul(6)
+      .add(vec3(0, 4, 2))
+      .mod(6)
+      .sub(3)
+      .abs()
+      .sub(1)
+      .clamp(0, 1)
+    return mix(vec3(1), rgb, 0.8).mul(0.9)
+  }
 
   const update = Fn(() => {
     If(isActive, () => {
@@ -465,6 +505,8 @@ export default async (config: RainConfig) => {
     damping.value = Math.exp(-config.friction * delta)
     lifetime.value = config.lifetime
     erosionRate.value = config.erosion
+    hueBase.value = config.hue / 360
+    hueSpread.value = config.hueSpread
     trailDecay.value =
       config.trail > 0 ? Math.exp(-(delta * 4) / config.trail) : 0
     terrainBrightness.value = config.terrain
