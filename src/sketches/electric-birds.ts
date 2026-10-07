@@ -68,6 +68,8 @@ export interface ElectricBirdsConfig {
   alignment: number
   separation: number
   maxAccel: number
+  // simulation speed multiplier, 1 = normal, 0 = paused
+  speed: number
 }
 
 export const defaultElectricBirdsConfig = (): ElectricBirdsConfig => ({
@@ -83,6 +85,7 @@ export const defaultElectricBirdsConfig = (): ElectricBirdsConfig => ({
   alignment: ALIGNMENT,
   separation: SEPARATION,
   maxAccel: MAX_ACCEL,
+  speed: 1,
 })
 
 export const electricBirdsControls: Control<ElectricBirdsConfig>[] = [
@@ -193,6 +196,15 @@ export const electricBirdsControls: Control<ElectricBirdsConfig>[] = [
     max: 1000,
     step: 10,
     help: 'Top turning/speeding-up force, in pixels per second squared. Low values make dots steer slowly and swing wide.',
+  },
+  {
+    type: 'range',
+    key: 'speed',
+    label: 'step speed',
+    min: 0,
+    max: 2,
+    step: 0.05,
+    help: 'Simulation speed. 1 is normal, lower is slow motion, 0 pauses.',
   },
 ]
 
@@ -446,7 +458,7 @@ export default async (config: ElectricBirdsConfig) => {
     separation.value = config.separation
     maxAccel.value = config.maxAccel
     const now = performance.now()
-    dt.value = Math.min((now - last) / 1000, 0.05)
+    dt.value = Math.min((now - last) / 1000, 0.05) * config.speed
     last = now
     for (const pass of [steer, move]) {
       renderer.compute(pass)

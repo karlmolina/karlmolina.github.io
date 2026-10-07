@@ -64,6 +64,10 @@ export interface RainConfig {
   noiseScale: number
   octaves: number
   seed: number
+  // simulation speed multiplier, 1 = normal, 0 = paused
+  speed: number
+  // opacity of the drops, 0-1
+  opacity: number
 }
 
 export const defaultRainConfig = (): RainConfig => ({
@@ -81,6 +85,8 @@ export const defaultRainConfig = (): RainConfig => ({
   noiseScale: 220,
   octaves: 4,
   seed: 1,
+  speed: 1,
+  opacity: 1,
 })
 
 export const rainControls: Control<RainConfig>[] = [
@@ -213,6 +219,24 @@ export const rainControls: Control<RainConfig>[] = [
     step: 0.01,
     help: 'How much the color changes with the direction a drop travels. 1 spans the whole rainbow, 0 makes every drop the same color.',
   },
+  {
+    type: 'range',
+    key: 'speed',
+    label: 'step speed',
+    min: 0,
+    max: 2,
+    step: 0.05,
+    help: 'Simulation speed. 1 is normal, lower is slow motion, 0 pauses.',
+  },
+  {
+    type: 'range',
+    key: 'opacity',
+    label: 'opacity',
+    min: 0,
+    max: 1,
+    step: 0.05,
+    help: 'How see-through the drops are. Low values let overlapping drops build up brightness.',
+  },
 ]
 
 export default async (config: RainConfig) => {
@@ -270,7 +294,10 @@ export default async (config: RainConfig) => {
     for (let o = 0; o < config.octaves; o += 1) {
       sum = sum.add(
         mx_noise_float(
-          vec3(p.mul(frequency), noiseTime.mul(frequency).add(config.seed * 7.31)),
+          vec3(
+            p.mul(frequency),
+            noiseTime.mul(frequency).add(config.seed * 7.31),
+          ),
         ).mul(amplitude),
       )
       total += amplitude
@@ -478,11 +505,14 @@ export default async (config: RainConfig) => {
   material.depthTest = false
   material.depthWrite = false
   const dotSize = uniform(2)
+  const dropOpacity = uniform(1)
   material.positionNode = vec3(positionBuffer.toAttribute(), 0.5)
   material.scaleNode = dotSize
   // round, soft-edged drops instead of squares
   material.transparent = true
-  material.opacityNode = smoothstep(0.5, 0.3, length(uv().sub(0.5)))
+  material.opacityNode = smoothstep(0.5, 0.3, length(uv().sub(0.5))).mul(
+    dropOpacity,
+  )
   material.colorNode = directionColor(velocityBuffer.toAttribute())
   const sprite = new Sprite(material)
   sprite.count = COUNT
@@ -494,13 +524,14 @@ export default async (config: RainConfig) => {
   let last = performance.now()
   renderer.setAnimationLoop(() => {
     const now = performance.now()
-    const delta = Math.min((now - last) / 1000, 0.05)
+    const delta = Math.min((now - last) / 1000, 0.05) * config.speed
     last = now
     dt.value = delta
     frame.value = (frame.value + 1) % 1_000_000
     activeCount.value = config.dots
     sprite.count = config.dots
     dotSize.value = config.dotSize
+    dropOpacity.value = config.opacity
     gravity.value = config.gravity
     damping.value = Math.exp(-config.friction * delta)
     lifetime.value = config.lifetime

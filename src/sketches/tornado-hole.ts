@@ -48,6 +48,10 @@ export interface TornadoHoleConfig {
   spring: number
   // fraction of velocity kept per step
   damping: number
+  // simulation speed multiplier, 1 = normal, 0 = paused
+  speed: number
+  // opacity of the dots, 0-1
+  opacity: number
 }
 
 export const defaultTornadoHoleConfig = (): TornadoHoleConfig => ({
@@ -59,6 +63,8 @@ export const defaultTornadoHoleConfig = (): TornadoHoleConfig => ({
   dotSize: 10,
   spring: 0.1,
   damping: 0.99,
+  speed: 1,
+  opacity: 1,
 })
 
 export default async (config: TornadoHoleConfig) => {
@@ -116,7 +122,10 @@ export default async (config: TornadoHoleConfig) => {
   }
   const spring = uniform(config.spring)
   const damping = uniform(config.damping)
+  // fraction of a full step each step advances, so slow motion keeps 60 steps a second
+  const stepScale = uniform(1)
   const dotSize = uniform(config.dotSize)
+  const dotOpacity = uniform(config.opacity)
   const positionAttribute = new StorageInstancedBufferAttribute(positions, 2)
   const positionBuffer = storage(positionAttribute, 'vec2', count)
   const velocityBuffer = instancedArray(count, 'vec2')
@@ -213,7 +222,7 @@ export default async (config: TornadoHoleConfig) => {
         })
         .Else(() => {
           vel.mulAssign(damping)
-          pos.addAssign(vel)
+          pos.addAssign(vel.mul(stepScale))
         })
     })
   })().compute(count)
@@ -237,6 +246,7 @@ export default async (config: TornadoHoleConfig) => {
   material.opacityNode = float(1)
     .sub(smoothstep(0.4, 0.5, edge))
     .mul(dotColor.a)
+    .mul(dotOpacity)
   const sprite = new Sprite(material)
   sprite.count = count
   sprite.frustumCulled = false
@@ -337,11 +347,15 @@ export default async (config: TornadoHoleConfig) => {
   let last = performance.now()
   let accumulated = 0
   renderer.setAnimationLoop(() => {
-    spring.value = config.spring
-    damping.value = config.damping
+    // below normal speed, shrink each step instead of running fewer of them
+    const scale = Math.min(config.speed, 1)
+    stepScale.value = scale
+    spring.value = config.spring * scale
+    damping.value = config.damping ** scale
     dotSize.value = config.dotSize
+    dotOpacity.value = config.opacity
     const now = performance.now()
-    accumulated += (now - last) / 1000
+    accumulated += ((now - last) / 1000) * Math.max(config.speed, 1)
     last = now
     let steps = 0
     while (accumulated >= STEP && steps < MAX_STEPS_PER_FRAME) {
