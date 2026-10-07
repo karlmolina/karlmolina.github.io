@@ -7,6 +7,7 @@ import {
   WebGPURenderer,
 } from 'three/webgpu'
 import {
+  atan,
   float,
   Fn,
   If,
@@ -14,6 +15,7 @@ import {
   instanceIndex,
   int,
   Loop,
+  mix,
   select,
   storage,
   uniform,
@@ -70,6 +72,10 @@ export interface ElectricBirdsConfig {
   maxAccel: number
   // simulation speed multiplier, 1 = normal, 0 = paused
   speed: number
+  // base hue of the dots in degrees
+  hue: number
+  // how much the hue changes with travel direction, 0 = one color, 1 = full rainbow
+  hueSpread: number
 }
 
 export const defaultElectricBirdsConfig = (): ElectricBirdsConfig => ({
@@ -86,6 +92,8 @@ export const defaultElectricBirdsConfig = (): ElectricBirdsConfig => ({
   separation: SEPARATION,
   maxAccel: MAX_ACCEL,
   speed: 1,
+  hue: 200,
+  hueSpread: 1,
 })
 
 export const electricBirdsControls: Control<ElectricBirdsConfig>[] = [
@@ -205,6 +213,24 @@ export const electricBirdsControls: Control<ElectricBirdsConfig>[] = [
     max: 2,
     step: 0.05,
     help: 'Simulation speed. 1 is normal, lower is slow motion, 0 pauses.',
+  },
+  {
+    type: 'range',
+    key: 'hue',
+    label: 'hue',
+    min: 0,
+    max: 360,
+    step: 1,
+    help: 'Base color of the dots and lines, as a hue angle.',
+  },
+  {
+    type: 'range',
+    key: 'hueSpread',
+    label: 'hue spread',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    help: 'How much the color changes with the direction a dot travels. 1 spans the whole rainbow, 0 makes every dot the same color.',
   },
 ]
 
@@ -394,6 +420,26 @@ export default async (config: ElectricBirdsConfig) => {
     })
   })().compute(MAX_COUNT)
 
+  // hue in turns (0-1) and how far travel direction moves it
+  const hueBase = uniform(0)
+  const hueSpread = uniform(1)
+  // color by travel direction
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const directionColor = (v: any) => {
+    const turns = atan(v.y, v.x).div(2 * Math.PI)
+    const h = hueBase.add(turns.mul(hueSpread))
+    // hue to rgb at full saturation, then softened toward white
+    const rgb = h
+      .mul(6)
+      .add(vec3(0, 4, 2))
+      .mod(6)
+      .sub(3)
+      .abs()
+      .sub(1)
+      .clamp(0, 1)
+    return mix(vec3(1), rgb, 0.8).mul(0.9)
+  }
+
   // lines: one stretched sprite per (dot, neighbor slot) pair
   const lineOpacity = uniform(LINE_OPACITY)
   const lineWidth = uniform(LINE_WIDTH)
@@ -415,10 +461,7 @@ export default async (config: ElectricBirdsConfig) => {
     lineWidth,
   )
   // same color rule as the dots, taken from the dot the line starts at
-  lineMaterial.colorNode = vec3(
-    velocityBuffer.element(lineDot).normalize().mul(0.5).add(0.5),
-    0.9,
-  )
+  lineMaterial.colorNode = directionColor(velocityBuffer.element(lineDot))
   lineMaterial.opacityNode = lineOpacity
   const lines = new Sprite(lineMaterial)
   lines.count = COUNT * MAX_LINKS
@@ -430,11 +473,7 @@ export default async (config: ElectricBirdsConfig) => {
   const dotSize = uniform(PARTICLE_SIZE)
   material.scaleNode = dotSize
   material.positionNode = positionBuffer.toAttribute()
-  // color by travel direction
-  material.colorNode = vec3(
-    velocityBuffer.toAttribute().normalize().mul(0.5).add(0.5),
-    0.9,
-  )
+  material.colorNode = directionColor(velocityBuffer.toAttribute())
   const sprite = new Sprite(material)
   sprite.count = COUNT
   sprite.frustumCulled = false
@@ -457,6 +496,8 @@ export default async (config: ElectricBirdsConfig) => {
     alignment.value = config.alignment
     separation.value = config.separation
     maxAccel.value = config.maxAccel
+    hueBase.value = config.hue / 360
+    hueSpread.value = config.hueSpread
     const now = performance.now()
     dt.value = Math.min((now - last) / 1000, 0.05) * config.speed
     last = now
