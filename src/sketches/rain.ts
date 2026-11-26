@@ -1,5 +1,6 @@
 import {
   atan,
+  dot,
   Fn,
   hash,
   If,
@@ -33,8 +34,10 @@ import type { Control } from '../lib/config-menu.ts'
 // buffers are sized for MAX_COUNT; the slider picks how many are active
 const MAX_COUNT = 100_000
 const COUNT = 20_000
-// pixels per height-buffer cell
-const CELL = 2
+// pixels per height/trail buffer cell; 1 keeps trails as sharp as the drops
+const CELL = 1
+// radius in cells of the soft brush that paints a drop's trail
+const TRAIL_RADIUS = 1.5
 // distance in pixels between the two samples used to measure the slope
 const SLOPE_STEP = 2
 
@@ -389,7 +392,9 @@ export default async (config: RainConfig) => {
       const random2 = hash(seedIndex.add(uint(7919)))
       const random3 = hash(seedIndex.add(uint(104729)))
 
-      const grid = pos.add(half).div(CELL)
+      // where the drop starts this step, in grid cells measured between
+      // cell centers; toVar keeps the value from before pos is updated
+      const start = pos.add(half).div(CELL).sub(0.5).toVar()
       // slope in height per pixel, taken straight from the noise function
       // (not the grid) so it is smooth and paths don't follow cell edges
       const here = pos.add(half)
@@ -406,27 +411,29 @@ export default async (config: RainConfig) => {
       pos.addAssign(vel.mul(dt))
       life.subAssign(dt)
 
-      // soft splat: share the drop's wetness between the 4 nearest cells by
-      // distance (keeping the strongest value) so the trail has no hard edges
-      const g = grid.sub(0.5)
-      const base = g.floor()
-      const f = g.fract()
-      for (const [ox, oy] of [
-        [0, 0],
-        [1, 0],
-        [0, 1],
-        [1, 1],
-      ]) {
-        const weight = (ox ? f.x : f.x.oneMinus()).mul(
-          oy ? f.y : f.y.oneMinus(),
-        )
-        const cell = base.add(vec2(ox, oy)).clamp(vec2(0, 0), gridMax)
-        const cellIndex = cell.y.mul(cols).add(cell.x).toUint()
-        const wet = trailBuffer.element(cellIndex)
-        If(weight.greaterThan(wet), () => {
-          wet.assign(weight)
-          trailColorBuffer.element(cellIndex).assign(directionColor(vel))
-        })
+      // soft round brush dragged along this step's path: wet the cells near
+      // the segment from start to end by their distance to it (keeping the
+      // strongest value), so trails are smooth even lines instead of a chain
+      // of stamps or the stair-steps a 4-cell bilinear splat gives
+      const end = pos.add(half).div(CELL).sub(0.5)
+      const path = end.sub(start)
+      const base = start.add(end).mul(0.5).round()
+      for (let oy = -2; oy <= 2; oy += 1) {
+        for (let ox = -2; ox <= 2; ox += 1) {
+          const cell = base.add(vec2(ox, oy))
+          const along = dot(cell.sub(start), path)
+            .div(dot(path, path).max(1e-6))
+            .clamp(0, 1)
+          const nearest = start.add(path.mul(along))
+          const weight = smoothstep(TRAIL_RADIUS, 0, length(cell.sub(nearest)))
+          const cellIndex0 = cell.clamp(vec2(0, 0), gridMax)
+          const cellIndex = cellIndex0.y.mul(cols).add(cellIndex0.x).toUint()
+          const wet = trailBuffer.element(cellIndex)
+          If(weight.greaterThan(wet), () => {
+            wet.assign(weight)
+            trailColorBuffer.element(cellIndex).assign(directionColor(vel))
+          })
+        }
       }
 
       const outside = pos.x
@@ -472,12 +479,21 @@ export default async (config: RainConfig) => {
   const dotSize = uniform(2)
   const dropOpacity = uniform(1)
   material.positionNode = vec3(positionBuffer.toAttribute(), 0.5)
-  material.scaleNode = dotSize
-  // round, soft-edged drops instead of squares
+  // the quad is a little bigger than the drop so its anti-aliased edge has
+  // room and isn't clipped into a square
+  const pixel = 1 / window.devicePixelRatio
+  const quadSize = dotSize.add(2 * pixel)
+  material.scaleNode = quadSize
+  // round drops with an edge exactly one screen pixel wide, so they stay
+  // smooth at any size and pixel ratio; drops under a pixel fade out instead
+  // of snapping to a whole pixel
   material.transparent = true
-  material.opacityNode = smoothstep(0.5, 0.3, length(uv().sub(0.5))).mul(
-    dropOpacity,
-  )
+  const radius = dotSize.mul(0.5).max(pixel * 0.5)
+  const distance = length(uv().sub(0.5)).mul(quadSize)
+  const coverage = radius.sub(distance).div(pixel).add(0.5).clamp(0, 1)
+  material.opacityNode = coverage
+    .mul(dotSize.div(pixel).min(1))
+    .mul(dropOpacity)
   material.colorNode = directionColor(velocityBuffer.toAttribute())
   const sprite = new Sprite(material)
   sprite.count = COUNT
