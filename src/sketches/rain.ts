@@ -40,6 +40,8 @@ const CELL = 1
 const TRAIL_RADIUS = 1.5
 // distance in pixels between the two samples used to measure the slope
 const SLOPE_STEP = 2
+// side in cells of the square of the ink buffer each brush stroke repaints
+const BRUSH_TILE = 128
 
 export interface RainConfig {
   dots: number
@@ -67,6 +69,12 @@ export interface RainConfig {
   speed: number
   // opacity of the drops, 0-1
   opacity: number
+  // width in pixels of the brush strokes drawn with the pointer
+  brushSize: number
+  // height of a drawn stroke; negative strokes dig channels instead of walls
+  wallHeight: number
+  // seconds a drawn stroke takes to fade away, 0 = never
+  inkFade: number
 }
 
 export const defaultRainConfig = (): RainConfig => ({
@@ -85,6 +93,9 @@ export const defaultRainConfig = (): RainConfig => ({
   seed: 1,
   speed: 1,
   opacity: 1,
+  brushSize: 16,
+  wallHeight: 1,
+  inkFade: 10,
 })
 
 export const rainControls: Control<RainConfig>[] = [
@@ -226,6 +237,33 @@ export const rainControls: Control<RainConfig>[] = [
     step: 0.05,
     help: 'How see-through the drops are. Low values let overlapping drops build up brightness.',
   },
+  {
+    type: 'range',
+    key: 'brushSize',
+    label: 'brush size',
+    min: 2,
+    max: 80,
+    step: 1,
+    help: 'Width in pixels of the strokes you draw by dragging on the rain.',
+  },
+  {
+    type: 'range',
+    key: 'wallHeight',
+    label: 'wall height',
+    min: -3,
+    max: 3,
+    step: 0.1,
+    help: 'How tall drawn strokes are. Positive strokes are walls the drops roll around and pool against, negative strokes are channels the drops fall into and follow.',
+  },
+  {
+    type: 'range',
+    key: 'inkFade',
+    label: 'stroke fade',
+    min: 0,
+    max: 60,
+    step: 1,
+    help: 'Seconds a drawn stroke takes to wear away. 0 keeps strokes until the sketch restarts.',
+  },
 ]
 
 export default async (config: RainConfig) => {
@@ -241,7 +279,11 @@ export default async (config: RainConfig) => {
   renderer.setPixelRatio(window.devicePixelRatio)
   renderer.setSize(width, height)
   renderer.setClearColor(0x000000)
-  parent.appendChild(renderer.domElement)
+  const canvas = renderer.domElement
+  canvas.style.display = 'block'
+  // let pointer drags draw instead of scrolling or zooming the page
+  canvas.style.touchAction = 'none'
+  parent.appendChild(canvas)
   await renderer.init()
 
   const camera = new OrthographicCamera(
@@ -263,6 +305,8 @@ export default async (config: RainConfig) => {
   const trailBuffer = instancedArray(cols * rows, 'float')
   // color of the drop that last wet each cell
   const trailColorBuffer = instancedArray(cols * rows, 'vec3')
+  // strokes drawn with the pointer, 0-1; added to the terrain as walls
+  const inkBuffer = instancedArray(cols * rows, 'float')
 
   const half = vec2(width / 2, height / 2)
   const gridMax = vec2(cols - 1, rows - 1)
@@ -325,6 +369,8 @@ export default async (config: RainConfig) => {
   const sampleTrail: any = bilinear(trailBuffer)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sampleTrailColor: any = bilinear(trailColorBuffer as any)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sampleInk: any = bilinear(inkBuffer)
 
   // drops: position and velocity in pixels from the screen center, plus
   // the seconds each one has left before it respawns
@@ -358,6 +404,9 @@ export default async (config: RainConfig) => {
   // hue in turns (0-1) and how far direction moves it
   const hueBase = uniform(0)
   const hueSpread = uniform(1)
+  const wallHeight = uniform(1)
+  // ink lost per frame
+  const inkDecay = uniform(0)
 
   // 1. roll downhill on the height buffer; respawn when done
   // color by travel direction, same rule as electric birds
@@ -404,8 +453,15 @@ export default async (config: RainConfig) => {
       const dy = noiseHeight(here.add(vec2(0, SLOPE_STEP))).sub(
         noiseHeight(here.sub(vec2(0, SLOPE_STEP))),
       )
+      // drawn strokes add to the height, so drops roll off and around them
+      const inkAt = (x: number, y: number) =>
+        sampleInk(here.add(vec2(x, y)).div(CELL))
+      const inkDx = inkAt(SLOPE_STEP, 0).sub(inkAt(-SLOPE_STEP, 0))
+      const inkDy = inkAt(0, SLOPE_STEP).sub(inkAt(0, -SLOPE_STEP))
       // roll toward lower ground
-      const slope = vec2(dx, dy).div(2 * SLOPE_STEP)
+      const slope = vec2(dx, dy)
+        .add(vec2(inkDx, inkDy).mul(wallHeight))
+        .div(2 * SLOPE_STEP)
       vel.addAssign(slope.mul(gravity.negate()).mul(dt))
       vel.assign(vel.mul(damping))
       pos.addAssign(vel.mul(dt))
@@ -450,11 +506,45 @@ export default async (config: RainConfig) => {
     })
   })().compute(MAX_COUNT)
 
-  // 2. fade the trails
+  // 2. fade the trails and the drawn strokes
   const fade = Fn(() => {
     const t = trailBuffer.element(instanceIndex)
     t.assign(t.mul(trailDecay))
+    const ink = inkBuffer.element(instanceIndex)
+    ink.assign(ink.sub(inkDecay).max(0))
   })().compute(cols * rows)
+
+  // 3. paint one brush segment into the ink buffer; only the BRUSH_TILE
+  // square at tileOrigin is visited, so long drags are split into pieces
+  // that fit (see paintSegment)
+  const segmentStart = uniform(vec2(0, 0))
+  const segmentEnd = uniform(vec2(0, 0))
+  const tileOrigin = uniform(vec2(0, 0))
+  const brushRadius = uniform(8)
+  const paint = Fn(() => {
+    const cell = tileOrigin.add(
+      vec2(
+        instanceIndex.mod(uint(BRUSH_TILE)).toFloat(),
+        instanceIndex.div(uint(BRUSH_TILE)).toFloat(),
+      ),
+    )
+    const inside = cell.x
+      .greaterThanEqual(0)
+      .and(cell.y.greaterThanEqual(0))
+      .and(cell.x.lessThanEqual(cols - 1))
+      .and(cell.y.lessThanEqual(rows - 1))
+    If(inside, () => {
+      const path = segmentEnd.sub(segmentStart)
+      const along = dot(cell.sub(segmentStart), path)
+        .div(dot(path, path).max(1e-6))
+        .clamp(0, 1)
+      const nearest = segmentStart.add(path.mul(along))
+      // smooth bump, so the wall has a gentle slope for drops to roll off
+      const weight = smoothstep(brushRadius, 0, length(cell.sub(nearest)))
+      const ink = inkBuffer.element(cell.y.mul(cols).add(cell.x).toUint())
+      ink.assign(ink.max(weight))
+    })
+  })().compute(BRUSH_TILE * BRUSH_TILE)
 
   // terrain: height map in grays with the wet trails tinted by the drop that made them
   const terrainBrightness = uniform(1)
@@ -467,7 +557,7 @@ export default async (config: RainConfig) => {
     vec3(terrainHeight.mul(0.9).mul(terrainBrightness)),
     sampleTrailColor(terrainGrid).mul(0.8),
     wet.mul(0.6),
-  )
+  ).add(sampleInk(terrainGrid).mul(0.25))
   const terrain = new Mesh(new PlaneGeometry(width, height), terrainMaterial)
   terrain.renderOrder = -1
   scene.add(terrain)
@@ -502,6 +592,68 @@ export default async (config: RainConfig) => {
 
   renderer.compute(initHeights)
 
+  // drawing: pointer drags queue segments (in grid cell indices) that are
+  // painted into the ink buffer at the start of the next frame
+  const segments: [number, number, number, number][] = []
+  const strokes = new Map<number, { x: number; y: number }>()
+  const toGrid = (e: PointerEvent) => {
+    const rect = canvas.getBoundingClientRect()
+    return {
+      x: (e.clientX - rect.left) / CELL - 0.5,
+      y: (height - (e.clientY - rect.top)) / CELL - 0.5,
+    }
+  }
+  const onPointerDown = (e: PointerEvent) => {
+    if (e.button !== 0) return
+    canvas.setPointerCapture(e.pointerId)
+    const p = toGrid(e)
+    strokes.set(e.pointerId, p)
+    segments.push([p.x, p.y, p.x, p.y])
+  }
+  const onPointerMove = (e: PointerEvent) => {
+    let previous = strokes.get(e.pointerId)
+    if (!previous) return
+    // coalesced events keep fast strokes curved instead of a few long chords
+    const events = e.getCoalescedEvents?.() ?? []
+    for (const event of events.length > 0 ? events : [e]) {
+      const p = toGrid(event)
+      segments.push([previous.x, previous.y, p.x, p.y])
+      previous = p
+    }
+    strokes.set(e.pointerId, previous)
+  }
+  const onPointerUp = (e: PointerEvent) => {
+    strokes.delete(e.pointerId)
+  }
+  canvas.addEventListener('pointerdown', onPointerDown)
+  canvas.addEventListener('pointermove', onPointerMove)
+  canvas.addEventListener('pointerup', onPointerUp)
+  canvas.addEventListener('pointercancel', onPointerUp)
+
+  const paintSegment = (x0: number, y0: number, x1: number, y1: number) => {
+    const radius = Math.max(config.brushSize / 2 / CELL, 0.5)
+    const margin = Math.ceil(radius) + 1
+    const maxLength = Math.max(BRUSH_TILE - 2 * margin, 1)
+    const pieces = Math.max(
+      1,
+      Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) / maxLength),
+    )
+    brushRadius.value = radius
+    for (let i = 0; i < pieces; i += 1) {
+      const ax = x0 + ((x1 - x0) * i) / pieces
+      const ay = y0 + ((y1 - y0) * i) / pieces
+      const bx = x0 + ((x1 - x0) * (i + 1)) / pieces
+      const by = y0 + ((y1 - y0) * (i + 1)) / pieces
+      segmentStart.value.set(ax, ay)
+      segmentEnd.value.set(bx, by)
+      tileOrigin.value.set(
+        Math.floor(Math.min(ax, bx)) - margin,
+        Math.floor(Math.min(ay, by)) - margin,
+      )
+      renderer.compute(paint)
+    }
+  }
+
   let last = performance.now()
   renderer.setAnimationLoop(() => {
     const now = performance.now()
@@ -521,6 +673,10 @@ export default async (config: RainConfig) => {
     trailDecay.value =
       config.trail > 0 ? Math.exp(-(delta * 4) / config.trail) : 0
     terrainBrightness.value = config.terrain
+    wallHeight.value = config.wallHeight
+    inkDecay.value = config.inkFade > 0 ? delta / config.inkFade : 0
+    for (const [x0, y0, x1, y1] of segments) paintSegment(x0, y0, x1, y1)
+    segments.length = 0
     noiseTime.value += delta * config.drift
     // the height buffer is only for display, so skip it while terrain is hidden
     if (config.terrain > 0 && config.drift > 0) renderer.compute(initHeights)
@@ -532,6 +688,10 @@ export default async (config: RainConfig) => {
   return {
     destroy: () => {
       renderer.setAnimationLoop(null)
+      canvas.removeEventListener('pointerdown', onPointerDown)
+      canvas.removeEventListener('pointermove', onPointerMove)
+      canvas.removeEventListener('pointerup', onPointerUp)
+      canvas.removeEventListener('pointercancel', onPointerUp)
       renderer.dispose()
       renderer.domElement.remove()
     },
